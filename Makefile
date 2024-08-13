@@ -19,6 +19,16 @@ test: ## Test the code with pytest
 	@echo "🚀 Testing code: Running pytest"
 	@poetry run pytest --cov --cov-config=pyproject.toml --cov-report=xml
 
+.PHONY: push-data
+push-data: ## Push data up to shared file system
+	@echo "🚀 Rsync data directory up to shared file system"
+	rsync -avzh data/* ec2-user@35.90.214.49:/interns/pathway
+
+.PHONY: pull-data
+pull-data: ## Pull data down from shared file system
+	@echo "🚀 Rsync data directory down from shared file system"
+	rsync -avzh 'ec2-user@35.90.214.49:/interns/pathway/*' data/
+
 .PHONY: build
 build: clean-build ## Build wheel file using poetry
 	@echo "🚀 Creating wheel file"

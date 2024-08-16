@@ -1,6 +1,9 @@
 # data
 data/
 
+# chroma
+chroma/
+
 # source documents
 docs/source
 

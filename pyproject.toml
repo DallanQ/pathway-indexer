@@ -11,10 +11,14 @@ packages = [
 ]
 
 [tool.poetry.dependencies]
-python = ">=3.8,<4.0"
+python = ">=3.12,<4.0"
 beautifulsoup4 = "^4.12.3"
 ipykernel = "^6.29.5"
 requests = "^2.32.3"
+unstructured-client = "^0.25.5"
+llama-index = "^0.10.65"
+llama-parse = "^0.4.9"
+python-dotenv = "^1.0.1"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^7.2.0"

@@ -42,3 +42,39 @@ def f_score(precision, recall, beta=1.0):
         return 0.0
     beta_squared = beta**2
     return (1 + beta_squared) * (precision * recall) / (beta_squared * precision + recall)
+
+
+def extract_question_ngrams(qa_df, ngram_size):
+    """
+    Extracts n-grams from a DataFrame of questions and answers.
+
+    This function iterates over each row of the DataFrame `qa_df` and generates n-grams from the specified columns.
+    The n-grams are stored in a dictionary where the keys are the questions and the values are lists of n-grams.
+
+    Parameters:
+    qa_df (pandas.DataFrame): DataFrame containing the questions and answers.
+    ngram_size (int): Size of the n-grams to generate.
+
+    Returns:
+    dict: A dictionary where the keys are the questions and the values are lists of n-grams.
+
+    Note:
+    The columns 'Initials', 'Questions', 'Ideal Answer', and 'Link to Ideal Answer' are ignored during n-gram generation.
+    If no n-grams are found in a row, an error message is printed and that row is skipped.
+    """
+    question_ngrams = {}
+    for _, row in qa_df.iterrows():
+        question = row["Questions"]
+        all_ngrams = []
+        for column in qa_df.columns:
+            if column in ["Initials", "Questions", "Ideal Answer", "Link to Ideal Answer"]:
+                continue
+            text = row[column]
+            if not text:
+                continue
+            all_ngrams.extend(generate_ngrams_from_text(text, ngram_size=ngram_size))
+        if len(all_ngrams) == 0:
+            print("ERROR: no ngrams in quotes for ", question)
+            continue
+        question_ngrams[question] = all_ngrams
+    return question_ngrams

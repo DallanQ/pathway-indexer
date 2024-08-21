@@ -16,11 +16,7 @@ from llama_index.vector_stores.milvus import MilvusVectorStore
 from llama_index.embeddings.huggingface import HuggingFaceEmbedding
 from llama_index.embeddings.openai import OpenAIEmbedding
 from llama_index.embeddings.voyageai import VoyageEmbedding
-import nest_asyncio
-import optuna
-import pandas as pd
 from pymilvus import MilvusClient
-from qdrant_client import QdrantClient, AsyncQdrantClient
 
 
 def _generate_ngrams_from_text(text, ngram_size=3):
@@ -222,7 +218,6 @@ def objective(trial, documents, ngram_size, question_ngrams, f_beta=1.0):
         "index",
         [
             "chromadb",
-            "qdrant",
             "milvus",  # need to create a (free) account at https://cloud.zilliz.com/
             # and add MILVUS_URI=your public endpoint and MILVUS_TOKEN=your token (api key) to your .env file
         ],
@@ -234,21 +229,6 @@ def objective(trial, documents, ngram_size, question_ngrams, f_beta=1.0):
             chroma_client.delete_collection("test")
         chroma_collection = chroma_client.create_collection("test")
         vector_store = ChromaVectorStore(chroma_collection=chroma_collection)
-    elif index_type == "qdrant":
-        query_mode = VectorStoreQueryMode.HYBRID
-        client = QdrantClient(location=":memory:")
-        # delete collection if it exists
-        if client.collection_exists("test"):
-            client.delete_collection("test")
-        # create our vector store with hybrid indexing enabled
-        # batch_size controls how many nodes are encoded with sparse vectors at once
-        # hybrid uses Splade v1 for sparse vectors
-        vector_store = QdrantVectorStore(
-            collection_name="test",
-            client=client,
-            enable_hybrid=True,
-            batch_size=20,
-        )
     elif index_type == "milvus":
         query_mode = VectorStoreQueryMode.HYBRID
         milvus_k = trial.suggest_int("milvus_k", 40, 80)

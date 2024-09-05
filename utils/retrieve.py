@@ -252,7 +252,7 @@ def objective(trial, documents, ngram_size, question_ngrams, f_beta=1.0):
         )
 
     # define top_k
-    top_k = trial.suggest_int("top_k", 2, 5)
+    top_k = trial.suggest_int("top_k", 2, 50)
     sparse_top_k = top_k * 5
 
     #

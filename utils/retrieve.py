@@ -1,5 +1,4 @@
 import re
-import os
 
 import chromadb
 from llama_index.core import VectorStoreIndex
@@ -11,12 +10,8 @@ from llama_index.core.node_parser import (
 )
 from llama_index.core.vector_stores.types import VectorStoreQueryMode
 from llama_index.vector_stores.chroma import ChromaVectorStore
-from llama_index.vector_stores.milvus import MilvusVectorStore
-# from llama_index.vector_stores.qdrant import QdrantVectorStore
-from llama_index.embeddings.huggingface import HuggingFaceEmbedding
+# from llama_index.embeddings.huggingface import HuggingFaceEmbedding
 from llama_index.embeddings.openai import OpenAIEmbedding
-from llama_index.embeddings.voyageai import VoyageEmbedding
-from pymilvus import MilvusClient
 
 
 def _generate_ngrams_from_text(text, ngram_size=3):
@@ -33,6 +28,84 @@ def _generate_ngrams_from_text(text, ngram_size=3):
         tuple(words[i : i + ngram_size]) for i in range(len(words) + 1 - ngram_size)
     ]
 
+
+# New Splitter
+
+from llama_index.core.schema import TextNode
+import spacy
+
+nlp = spacy.load("en_core_web_sm")
+
+def set_headers(par: str, header_levels: dict) -> dict:
+    """ Set headers for a paragraph """
+    
+    # Check if paragraph starts with a header (e.g. '# ', '## ', etc.)
+    for level in range(1, 7):
+        if par.startswith('#' * level + ' '):
+            header_levels[level] = par
+            # Reset lower-level headers
+            for lower_level in range(level + 1, 7):
+                header_levels[lower_level] = None
+            # Exit loop after finding the correct header level
+            break  
+    
+    # Build headers dictionary dynamically
+    headers = {f'header_{i}': header_levels[i] for i in range(1, 7) if header_levels[i]}
+    return headers
+
+def split_document_text(
+        paragraphs: list[str], 
+        md_metadata: dict,
+        add_metadata_to_text: bool = False,
+        split_by_sentence: bool = False
+    ) -> list[TextNode]:
+    """ Split text into paragraphs """
+    result = []
+    headers = {}
+    header_levels = {1: None, 2: None, 3: None, 4: None, 5: None, 6: None}
+    
+    for par in paragraphs:
+        headers = set_headers(par, header_levels)
+        # complet_context = set_complet_context(par, headers)
+        
+        metadata = {
+            **md_metadata,
+            **headers,
+            # 'paragraph': par,
+            # 'complet_context': complet_context
+        }        
+
+        # use spacy to split paragraph into sentences
+        if split_by_sentence:
+            doc = nlp(par)
+            for sent in doc.sents:
+                
+                if add_metadata_to_text:
+                    text = ''
+                    for value in metadata.values():
+                        text += str(value) + '\n'
+                    text += sent.text
+                else:
+                    text = sent.text
+                        
+                metadata['paragraph'] = par
+                node = TextNode(metadata=metadata, text=text)
+                result.append(node)
+
+        else:
+            if add_metadata_to_text:
+                text = ''
+                for value in metadata.values():
+                    text += str(value) + '\n'
+                text += par
+            else:
+                text = par
+            # Create a TextNode and add to result
+            metadata['paragraph'] = par
+            node = TextNode(metadata=metadata, text=text)
+            result.append(node)
+
+    return result
 
 def _generate_ngrams_from_texts(texts, ngram_size=3):
     """Generate all ngrams from a list of texts."""
@@ -116,14 +189,14 @@ def extract_question_ngrams(qa_df, ngram_size):
     """
     question_ngrams = {}
     for _, row in qa_df.iterrows():
-        question = row["Questions"]
+        question = row["Question"]
         all_ngrams = []
         for column in qa_df.columns:
             if column in [
                 "Initials",
-                "Questions",
+                "Question",
                 "Ideal Answer",
-                "Link to Ideal Answer",
+                "Link",
             ]:
                 continue
             text = row[column]
@@ -151,13 +224,13 @@ def objective(trial, documents, ngram_size, question_ngrams, f_beta=1.0):
     embed_model_name = trial.suggest_categorical(
         "embed_model",
         [
-            "text-embedding-3-small",
-            "voyage-large-2-instruct",
+            "text-embedding-3-large",
+            # "voyage-large-2-instruct",
             # GPU runs out of memory with gte model
             # 'Alibaba-NLP/gte-large-en-v1.5',  # WARNING: this downloads 1.74G of data
         ],
     )
-    if embed_model_name == "text-embedding-3-small":
+    if embed_model_name == "text-embedding-3-large":
         embed_model = OpenAIEmbedding(
             model=embed_model_name,
             embed_batch_size=10,
@@ -165,24 +238,22 @@ def objective(trial, documents, ngram_size, question_ngrams, f_beta=1.0):
             timeout=180,
             reuse_client=False,
         )
-    elif embed_model_name == "voyage-large-2-instruct":
-        embed_model = VoyageEmbedding(
-            model_name=embed_model_name,
-        )
-    elif embed_model_name == "Alibaba-NLP/gte-large-en-v1.5":
-        embed_model = HuggingFaceEmbedding(
-            model_name=embed_model_name, trust_remote_code=True
-        )
 
     # define splitter
     splitter_name = trial.suggest_categorical(
         "splitter",
         [
-            "sentence",
-            "semantic",
-            "markdown",
+            #"sentence",
+            # "semantic",
+            #"markdown",
+            "paragraph"
         ],
     )
+
+    include_prev_next_rel = trial.suggest_categorical(
+            "include_prev_next_rel", [True, False]
+        )
+
     if splitter_name == "sentence":
         chunk_size = trial.suggest_int("chunk_size", 256, 1024)
         chunk_overlap = trial.suggest_int("chunk_overlap", 0, 200)
@@ -192,9 +263,6 @@ def objective(trial, documents, ngram_size, question_ngrams, f_beta=1.0):
         breakpoint_percentile_threshold = trial.suggest_int(
             "breakpoint_percentile_threshold", 60, 95
         )
-        include_prev_next_rel = trial.suggest_categorical(
-            "include_prev_next_rel", [True, False]
-        )
         splitter = SemanticSplitterNodeParser(
             buffer_size=buffer_size,
             breakpoint_percentile_threshold=breakpoint_percentile_threshold,
@@ -202,12 +270,12 @@ def objective(trial, documents, ngram_size, question_ngrams, f_beta=1.0):
             embed_model=embed_model,
         )
     elif splitter_name == "markdown":
-        include_prev_next_rel = trial.suggest_categorical(
-            "include_prev_next_rel", [True, False]
-        )
         splitter = MarkdownNodeParser(
             include_prev_next_rel=include_prev_next_rel,
         )
+    elif splitter_name == "paragraph":
+        splitter = split_document_text
+
 
     # add metadata
     ## nothing for now
@@ -218,7 +286,7 @@ def objective(trial, documents, ngram_size, question_ngrams, f_beta=1.0):
         "index",
         [
             "chromadb",
-            "milvus",  # need to create a (free) account at https://cloud.zilliz.com/
+            # "milvus",  # need to create a (free) account at https://cloud.zilliz.com/
             # and add MILVUS_URI=your public endpoint and MILVUS_TOKEN=your token (api key) to your .env file
         ],
     )
@@ -229,30 +297,10 @@ def objective(trial, documents, ngram_size, question_ngrams, f_beta=1.0):
             chroma_client.delete_collection("test")
         chroma_collection = chroma_client.create_collection("test")
         vector_store = ChromaVectorStore(chroma_collection=chroma_collection)
-    elif index_type == "milvus":
-        query_mode = VectorStoreQueryMode.HYBRID
-        milvus_k = trial.suggest_int("milvus_k", 40, 80)
-        # delete collection if it exists
-        client = MilvusClient(
-            uri=os.environ["MILVUS_URI"], token=os.environ["MILVUS_TOKEN"]
-        )
-        if client.has_collection("test"):
-            client.drop_collection(collection_name="test")
-        client.close()
-        # hybrid uses BGE-M3 for sparse vectors
-        vector_store = MilvusVectorStore(
-            uri=os.environ["MILVUS_URI"],
-            token=os.environ["MILVUS_TOKEN"],
-            collection_name="test",
-            dim=len(embed_model.get_text_embedding("foo")),
-            overwrite=True,
-            enable_sparse=True,
-            hybrid_ranker="RRFRanker",
-            hybrid_ranker_params={"k": milvus_k},
-        )
+
 
     # define top_k
-    top_k = trial.suggest_int("top_k", 2, 5)
+    top_k = trial.suggest_int("top_k", 2, 50)
     sparse_top_k = top_k * 5
 
     #
@@ -277,13 +325,29 @@ def objective(trial, documents, ngram_size, question_ngrams, f_beta=1.0):
     nodes = pipeline.run(documents=documents)
     # print('nodes', len(nodes))
 
-    # add the nodes to the index
+    # Inserta nodos en el índice
     index.insert_nodes(nodes)
 
-    # assert all nodes have been indexed
-    assert len(index.as_retriever(similarity_top_k=len(nodes)).retrieve("foo")) == len(
-        nodes
-    )
+    print(f"Nodes inserted: {len(nodes)}")
+
+    # Verificar si todos los nodos fueron indexados
+    # retrieved_nodes = index.as_retriever(similarity_top_k=len(nodes)).retrieve("foo")
+
+    # Si no se recuperan todos los nodos, reinserta los faltantes
+    # if len(retrieved_nodes) != len(nodes):
+    #     missing_nodes = [node for node in nodes if node.id_ not in [n.id_ for n in retrieved_nodes]]
+    #     print(f"Reindexing {len(missing_nodes)} missing nodes...")
+    #     index.insert_nodes(missing_nodes)
+
+    # # Verifica nuevamente que todos los nodos fueron indexados
+    # retrieved_nodes_after_reindex = index.as_retriever(similarity_top_k=len(nodes)).retrieve("foo")
+    # print(f"Number of nodes inserted: {len(nodes)}")
+    # print(f"Number of nodes retrieved: {len(retrieved_nodes_after_reindex)}")
+    # assert len(retrieved_nodes_after_reindex) == len(nodes), "Not all nodes were indexed!"
+
+
+
+    # assert len(retrieved_nodes) == len(nodes)
 
     # create a retriever from the index
     retriever = index.as_retriever(

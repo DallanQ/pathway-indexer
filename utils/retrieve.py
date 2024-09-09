@@ -4,14 +4,17 @@ import chromadb
 from llama_index.core import VectorStoreIndex
 from llama_index.core.ingestion import IngestionPipeline
 from llama_index.core.node_parser import (
-    SentenceSplitter,
-    SemanticSplitterNodeParser,
     MarkdownNodeParser,
+    SemanticSplitterNodeParser,
+    SentenceSplitter,
 )
 from llama_index.core.vector_stores.types import VectorStoreQueryMode
-from llama_index.vector_stores.chroma import ChromaVectorStore
+
 # from llama_index.embeddings.huggingface import HuggingFaceEmbedding
 from llama_index.embeddings.openai import OpenAIEmbedding
+from llama_index.vector_stores.chroma import ChromaVectorStore
+
+from utils.custom_node_parser import CustomNodeParser
 
 
 def _generate_ngrams_from_text(text, ngram_size=3):
@@ -24,9 +27,7 @@ def _generate_ngrams_from_text(text, ngram_size=3):
     words = cleaned_text.split()
 
     # Generate ngrams
-    return [
-        tuple(words[i : i + ngram_size]) for i in range(len(words) + 1 - ngram_size)
-    ]
+    return [tuple(words[i : i + ngram_size]) for i in range(len(words) + 1 - ngram_size)]
 
 
 def _generate_ngrams_from_texts(texts, ngram_size=3):
@@ -38,6 +39,7 @@ def _generate_ngrams_from_texts(texts, ngram_size=3):
         all_ngrams.extend(ngrams)
 
     return all_ngrams
+
 
 def precision_recall(predicted_ngrams, true_ngrams):
     """
@@ -55,19 +57,10 @@ def precision_recall(predicted_ngrams, true_ngrams):
     false_negatives = len(true_set - predicted_set)
 
     # Calculate precision and recall
-    precision = (
-        true_positives / (true_positives + false_positives)
-        if true_positives + false_positives > 0
-        else 0
-    )
-    recall = (
-        true_positives / (true_positives + false_negatives)
-        if true_positives + false_negatives > 0
-        else 0
-    )
+    precision = true_positives / (true_positives + false_positives) if true_positives + false_positives > 0 else 0
+    recall = true_positives / (true_positives + false_negatives) if true_positives + false_negatives > 0 else 0
 
     return precision, recall
-
 
 
 def f_score(precision, recall, beta=1.0):
@@ -86,9 +79,7 @@ def f_score(precision, recall, beta=1.0):
     if precision + recall == 0:
         return 0.0
     beta_squared = beta**2
-    return (
-        (1 + beta_squared) * (precision * recall) / (beta_squared * precision + recall)
-    )
+    return (1 + beta_squared) * (precision * recall) / (beta_squared * precision + recall)
 
 
 def extract_question_ngrams(qa_df, ngram_size):
@@ -168,32 +159,34 @@ def objective(trial, documents, ngram_size, question_ngrams, f_beta=1.0):
             "sentence",
             "semantic",
             "markdown",
+            "custom_splitter",
         ],
     )
 
-    include_prev_next_rel = trial.suggest_categorical(
-            "include_prev_next_rel", [True, False]
-        )
+    include_prev_next_rel = trial.suggest_categorical("include_prev_next_rel", [True, False])
 
     if splitter_name == "sentence":
         chunk_size = trial.suggest_int("chunk_size", 256, 1024)
         chunk_overlap = trial.suggest_int("chunk_overlap", 0, 200)
         splitter = SentenceSplitter(chunk_size=chunk_size, chunk_overlap=chunk_overlap)
+
     elif splitter_name == "semantic":
         buffer_size = trial.suggest_int("buffer_size", 1, 3)
-        breakpoint_percentile_threshold = trial.suggest_int(
-            "breakpoint_percentile_threshold", 60, 95
-        )
+        breakpoint_percentile_threshold = trial.suggest_int("breakpoint_percentile_threshold", 60, 95)
         splitter = SemanticSplitterNodeParser(
             buffer_size=buffer_size,
             breakpoint_percentile_threshold=breakpoint_percentile_threshold,
             include_prev_next_rel=include_prev_next_rel,
             embed_model=embed_model,
         )
+
     elif splitter_name == "markdown":
         splitter = MarkdownNodeParser(
             include_prev_next_rel=include_prev_next_rel,
         )
+
+    elif splitter_name == "custom_splitter":
+        splitter = CustomNodeParser(add_metadata_to_text=True, split_by_sentence=True)
 
     # add metadata
     ## nothing for now
@@ -215,7 +208,6 @@ def objective(trial, documents, ngram_size, question_ngrams, f_beta=1.0):
             chroma_client.delete_collection("test")
         chroma_collection = chroma_client.create_collection("test")
         vector_store = ChromaVectorStore(chroma_collection=chroma_collection)
-
 
     # define top_k
     top_k = trial.suggest_int("top_k", 2, 50)
@@ -263,8 +255,6 @@ def objective(trial, documents, ngram_size, question_ngrams, f_beta=1.0):
     # print(f"Number of nodes retrieved: {len(retrieved_nodes_after_reindex)}")
     # assert len(retrieved_nodes_after_reindex) == len(nodes), "Not all nodes were indexed!"
 
-
-
     # assert len(retrieved_nodes) == len(nodes)
 
     # create a retriever from the index
@@ -283,9 +273,7 @@ def objective(trial, documents, ngram_size, question_ngrams, f_beta=1.0):
     for question, true_ngrams in question_ngrams.items():
         response = retriever.retrieve(question)
         # print([node.id_ for node in response])
-        predicted_ngrams = _generate_ngrams_from_texts(
-            [node.text for node in response], ngram_size=ngram_size
-        )
+        predicted_ngrams = _generate_ngrams_from_texts([node.text for node in response], ngram_size=ngram_size)
         precision, recall = precision_recall(predicted_ngrams, true_ngrams)
         score = f_score(precision, recall, beta=f_beta)
         f_scores.append(score)

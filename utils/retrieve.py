@@ -266,7 +266,12 @@ def objective(trial, documents, ngram_size, question_ngrams, f_beta=1.0):
     #     splitter = split_document_text
 
     elif splitter_name == "custom_splitter":
-        splitter = CustomNodeParser().from_defaults(add_metadata_to_text=True, split_by_sentence=True)
+        add_metadata_to_text = trial.suggest_categorical("add_metadata_to_text", [True, False])
+        split_by_sentence = trial.suggest_categorical("split_by_sentence", [True, False])
+        splitter = CustomNodeParser().from_defaults(
+            add_metadata_to_text=add_metadata_to_text,
+            split_by_sentence=split_by_sentence
+            )
 
     # add metadata
     ## nothing for now

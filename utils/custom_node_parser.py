@@ -145,8 +145,6 @@ class CustomNodeParser(NodeParser):
         post = frontmatter.loads(text)
         metadata = post.metadata
         paragraphs = post.content.split("\n\n")
-        print(metadata)
-        print(paragraphs)
         return self.split_document_text(
             md_metadata=metadata,
             paragraphs=paragraphs,

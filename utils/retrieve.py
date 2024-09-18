@@ -30,83 +30,6 @@ def _generate_ngrams_from_text(text, ngram_size=3):
     return [tuple(words[i : i + ngram_size]) for i in range(len(words) + 1 - ngram_size)]
 
 
-# New Splitter
-
-# import spacy
-# from llama_index.core.schema import TextNode
-
-# nlp = spacy.load("en_core_web_sm")
-
-
-# def set_headers(par: str, header_levels: dict) -> dict:
-#     """Set headers for a paragraph"""
-
-#     # Check if paragraph starts with a header (e.g. '# ', '## ', etc.)
-#     for level in range(1, 7):
-#         if par.startswith("#" * level + " "):
-#             header_levels[level] = par
-#             # Reset lower-level headers
-#             for lower_level in range(level + 1, 7):
-#                 header_levels[lower_level] = None
-#             # Exit loop after finding the correct header level
-#             break
-
-#     # Build headers dictionary dynamically
-#     headers = {f"header_{i}": header_levels[i] for i in range(1, 7) if header_levels[i]}
-#     return headers
-
-
-# def split_document_text(
-#     paragraphs: list[str], md_metadata: dict, add_metadata_to_text: bool = False, split_by_sentence: bool = False
-# ) -> list[TextNode]:
-#     """Split text into paragraphs"""
-#     result = []
-#     headers = {}
-#     header_levels = {1: None, 2: None, 3: None, 4: None, 5: None, 6: None}
-
-#     for par in paragraphs:
-#         headers = set_headers(par, header_levels)
-#         # complet_context = set_complet_context(par, headers)
-
-#         metadata = {
-#             **md_metadata,
-#             **headers,
-#             # 'paragraph': par,
-#             # 'complet_context': complet_context
-#         }
-
-#         # use spacy to split paragraph into sentences
-#         if split_by_sentence:
-#             doc = nlp(par)
-#             for sent in doc.sents:
-#                 if add_metadata_to_text:
-#                     text = ""
-#                     for value in metadata.values():
-#                         text += str(value) + "\n"
-#                     text += sent.text
-#                 else:
-#                     text = sent.text
-
-#                 metadata["paragraph"] = par
-#                 node = TextNode(metadata=metadata, text=text)
-#                 result.append(node)
-
-#         else:
-#             if add_metadata_to_text:
-#                 text = ""
-#                 for value in metadata.values():
-#                     text += str(value) + "\n"
-#                 text += par
-#             else:
-#                 text = par
-#             # Create a TextNode and add to result
-#             metadata["paragraph"] = par
-#             node = TextNode(metadata=metadata, text=text)
-#             result.append(node)
-
-#     return result
-
-
 def _generate_ngrams_from_texts(texts, ngram_size=3):
     """Generate all ngrams from a list of texts."""
 
@@ -214,13 +137,14 @@ def objective(trial, documents, ngram_size, question_ngrams, f_beta=1.0):
     embed_model_name = trial.suggest_categorical(
         "embed_model",
         [
+            "text-embedding-3-small",
             "text-embedding-3-large",
             # "voyage-large-2-instruct",
             # GPU runs out of memory with gte model
             # 'Alibaba-NLP/gte-large-en-v1.5',  # WARNING: this downloads 1.74G of data
         ],
     )
-    if embed_model_name == "text-embedding-3-large":
+    if embed_model_name == "text-embedding-3-small" or embed_model_name == "text-embedding-3-large":
         embed_model = OpenAIEmbedding(
             model=embed_model_name,
             embed_batch_size=10,
@@ -234,14 +158,14 @@ def objective(trial, documents, ngram_size, question_ngrams, f_beta=1.0):
         "splitter",
         [
             # "sentence",
-            # "semantic",
+            "semantic",
             # "markdown",
             # "paragraph"
-            "custom_splitter"
+            "custom_splitter",
         ],
     )
 
-    include_prev_next_rel = trial.suggest_categorical("include_prev_next_rel", [True, False])
+    include_prev_next_rel = trial.suggest_categorical("include_prev_next_rel", [True])
 
     if splitter_name == "sentence":
         chunk_size = trial.suggest_int("chunk_size", 256, 1024)
@@ -269,9 +193,8 @@ def objective(trial, documents, ngram_size, question_ngrams, f_beta=1.0):
         add_metadata_to_text = trial.suggest_categorical("add_metadata_to_text", [True, False])
         split_by_sentence = trial.suggest_categorical("split_by_sentence", [True, False])
         splitter = CustomNodeParser().from_defaults(
-            add_metadata_to_text=add_metadata_to_text,
-            split_by_sentence=split_by_sentence
-            )
+            add_metadata_to_text=add_metadata_to_text, split_by_sentence=split_by_sentence
+        )
 
     # add metadata
     ## nothing for now
@@ -302,45 +225,8 @@ def objective(trial, documents, ngram_size, question_ngrams, f_beta=1.0):
     # Use hyperparameters to split documents into chunks, generate embeddings, and insert into an index
     #
 
-    # create a simple ingestion pipeline: chunk the documents and create embeddings
-    pipeline = IngestionPipeline(
-        transformations=[
-            splitter,
-            embed_model,
-        ]
-    )
-
-    # create an index from the vector store
-    index = VectorStoreIndex.from_vector_store(
-        vector_store,
-        embed_model=embed_model,
-    )
-
-    # run the pipeline to generate nodes
-    nodes = pipeline.run(documents=documents)
-    # print('nodes', len(nodes))
-
-    # Inserta nodos en el índice
-    index.insert_nodes(nodes)
-
-    print(f"Nodes inserted: {len(nodes)}")
-
-    # Verificar si todos los nodos fueron indexados
-    # retrieved_nodes = index.as_retriever(similarity_top_k=len(nodes)).retrieve("foo")
-
-    # Si no se recuperan todos los nodos, reinserta los faltantes
-    # if len(retrieved_nodes) != len(nodes):
-    #     missing_nodes = [node for node in nodes if node.id_ not in [n.id_ for n in retrieved_nodes]]
-    #     print(f"Reindexing {len(missing_nodes)} missing nodes...")
-    #     index.insert_nodes(missing_nodes)
-
-    # # Verifica nuevamente que todos los nodos fueron indexados
-    # retrieved_nodes_after_reindex = index.as_retriever(similarity_top_k=len(nodes)).retrieve("foo")
-    # print(f"Number of nodes inserted: {len(nodes)}")
-    # print(f"Number of nodes retrieved: {len(retrieved_nodes_after_reindex)}")
-    # assert len(retrieved_nodes_after_reindex) == len(nodes), "Not all nodes were indexed!"
-
-    # assert len(retrieved_nodes) == len(nodes)
+    # run the pipeline
+    index = run_pipeline(documents, splitter, embed_model, vector_store, include_prev_next_rel)
 
     # create a retriever from the index
     retriever = index.as_retriever(
@@ -354,15 +240,52 @@ def objective(trial, documents, ngram_size, question_ngrams, f_beta=1.0):
     #
 
     # issue all questions and calculate the f-score on the retrieved chunks
+    avg_f_score = evaluate_retriever(retriever, question_ngrams, ngram_size, f_beta, include_prev_next_rel)
+    return avg_f_score
+
+
+def run_pipeline(documents, splitter, embed_model, vector_store, include_prev_next_rel):
+    """Run the ingestion pipeline to split documents, generate embeddings, and insert into an index."""
+    pipeline = IngestionPipeline(
+        transformations=[
+            splitter,
+            embed_model,
+        ]
+    )
+    index = VectorStoreIndex.from_vector_store(
+        vector_store,
+        embed_model=embed_model,
+    )
+    nodes = pipeline.run(documents=documents)
+
+    if include_prev_next_rel:
+        for i in range(0, len(nodes)):
+            if i > 0:
+                nodes[i].metadata["prev"] = nodes[i - 1].text
+            if i < len(nodes) - 1:
+                nodes[i].metadata["next"] = nodes[i + 1].text
+
+    index.insert_nodes(nodes)
+    print(f"Nodes inserted: {len(nodes)}")
+    return index
+
+
+def evaluate_retriever(retriever, question_ngrams, ngram_size, f_beta, include_prev_next_rel):
+    """Evaluate the retriever using a set of questions and their corresponding n-grams."""
     f_scores = []
     for question, true_ngrams in question_ngrams.items():
         response = retriever.retrieve(question)
-        # print([node.id_ for node in response])
-        predicted_ngrams = _generate_ngrams_from_texts([node.text for node in response], ngram_size=ngram_size)
+
+        if include_prev_next_rel:
+            node_texts = [
+                node.metadata.get("prev", "") + " " + node.text + " " + node.metadata.get("next", "")
+                for node in response
+            ]
+        else:
+            node_texts = [node.text for node in response]
+
+        predicted_ngrams = _generate_ngrams_from_texts(node_texts, ngram_size=ngram_size)
         precision, recall = precision_recall(predicted_ngrams, true_ngrams)
         score = f_score(precision, recall, beta=f_beta)
         f_scores.append(score)
-    avg_f_score = sum(f_scores) / len(f_scores)
-
-    # return the average f-score
-    return avg_f_score
+    return sum(f_scores) / len(f_scores)

@@ -256,7 +256,7 @@ def run_pipeline(documents, splitter, embed_model, vector_store, include_prev_ne
         vector_store,
         embed_model=embed_model,
     )
-    nodes = pipeline.run(documents=documents)
+    nodes = pipeline.run(documents=documents, show_progress=True)
 
     if include_prev_next_rel:
         for i in range(0, len(nodes)):

@@ -21,6 +21,8 @@ logging.basicConfig(level=logging.WARNING)
 nest_asyncio.apply()
 load_dotenv()
 
+DATA_PATH = os.getenv("DATA_DIR")
+
 
 # Helper functions for cleaning and parsing HTML and PDF content
 def clean_html(soup):
@@ -319,7 +321,7 @@ def process_directory(directory):
                 process_file(file_path)
 
 
-def main(input_directory="try/files", metadata_csv="all_links.csv"):
+def main(input_directory=DATA_PATH, metadata_csv="all_links.csv"):
     """
     Main function to process a directory containing HTML and PDF files and attach metadata.
 
@@ -338,7 +340,7 @@ def main(input_directory="try/files", metadata_csv="all_links.csv"):
 
     # Step 2: Associate Markdown files with metadata from CSV
     print("Associating Markdown files with metadata...")
-    markdown_dirs = [os.path.join("try", "md")]  # Directory where Markdown files are saved
+    markdown_dirs = [os.path.join(DATA_PATH, "md")]  # Directory where Markdown files are saved
     metadata_dict = associate_markdown_with_metadata(markdown_dirs, metadata_csv)
     print("Metadata association completed.\n")
 
@@ -352,7 +354,7 @@ def main(input_directory="try/files", metadata_csv="all_links.csv"):
 
 if __name__ == "__main__":
     # You can modify these paths as needed
-    INPUT_DIRECTORY = "try/files"  # Directory containing HTML and PDF files
-    METADATA_CSV = "all_links.csv"  # Path to your metadata CSV file
+    INPUT_DIRECTORY = DATA_PATH  # Directory containing HTML and PDF files
+    METADATA_CSV = os.path.join(DATA_PATH, "all_links.csv")  # Path to your metadata CSV file
 
     main(input_directory=INPUT_DIRECTORY, metadata_csv=METADATA_CSV)

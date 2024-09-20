@@ -45,14 +45,23 @@ def get_data(soup: BeautifulSoup, selectors: Selectors) -> list:
     sub_header = selectors.sub_header
     link = selectors.link
     text = selectors.text
-    elems = soup.select("p.MsoNormal")
+    # get the elements inside the div div.WordSection1, independent of the tag
+    elems = soup.select("div.WordSection1 > *")
+    #elems = soup.select("p.MsoNormal")
 
     for elem in elems:
-        if elem.select(sub_header):
-            sub_header_text = elem.select(sub_header)[0].text
+        # in this if, vaidate if the element is a header
+        if elem.select(sub_header) or elem.name == sub_header:
+            if elem.select(sub_header):
+                sub_header_text = elem.select(sub_header)[0].text
+            else:
+                sub_header_text = elem.text
             cur_sub_header = clean(sub_header_text)
-        elif elem.select(header):
-            header_text = elem.select(header)[0].text
+        elif elem.select(header) or elem.name == header:
+            if elem.select(header):
+                header_text = elem.select(header)[0].text
+            else:
+                header_text = elem.text
             cur_header = clean(header_text)
             cur_sub_header = None
         elif elem.select(link):

@@ -39,8 +39,8 @@ acm_selectors = Selectors(
 
 #! THERE WAS CHANGES IN THE MISSIONARY SELECTORS
 missionary_selectors = Selectors(
-    header="b > span",
-    sub_header='span[style="font-size:16.0pt;line-height:150%"]',
+    header="h1",
+    sub_header='h2',
     link="a",
     text="a > span",
 )

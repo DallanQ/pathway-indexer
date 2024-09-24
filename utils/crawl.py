@@ -66,10 +66,12 @@ async def crawl_csv(df, base_dir, output_file="output_data.csv"):
     # base_dir = "../data/data_16_09_24/crawl/"
 
     # Create directories if they don't exist
-    create_folder(base_dir, is_full=True)
-    create_folder(base_dir, "html")
-    create_folder(base_dir, "pdf")
-    create_folder(base_dir, "others")
+    crawl_path = os.path.join(base_dir, "crawl")
+    print(crawl_path)
+    create_folder(crawl_path, is_full=True)
+    create_folder(crawl_path, "html")
+    create_folder(crawl_path, "pdf")
+    create_folder(crawl_path, "others")
 
     output_data = []
 
@@ -83,8 +85,8 @@ async def crawl_csv(df, base_dir, output_file="output_data.csv"):
         # Edit the title to become filename
 
         # Determine the filepaths
-        html_filepath = os.path.join(base_dir, "html", f"{filename}.html")
-        pdf_filepath = os.path.join(base_dir, "pdf", f"{filename}.pdf")
+        html_filepath = os.path.join(crawl_path, "html", f"{filename}.html")
+        pdf_filepath = os.path.join(crawl_path, "pdf", f"{filename}.pdf")
 
         # Skip fetching if the file already exists
         if os.path.exists(html_filepath) or os.path.exists(pdf_filepath):
@@ -123,7 +125,7 @@ async def crawl_csv(df, base_dir, output_file="output_data.csv"):
                     # Handle other content types by saving with the correct extension
                     file_extension = content_type.split("/")[-1].split(";")[0]
                     filepath = os.path.join(
-                        base_dir, "others", f"{filename}.{file_extension}"
+                        crawl_path, "others", f"{filename}.{file_extension}"
                     )
                     content = response.content
                     with open(filepath, "wb") as f:
@@ -151,7 +153,7 @@ async def crawl_csv(df, base_dir, output_file="output_data.csv"):
                     print(
                         f"Access forbidden for {url}: {http_err}. Using Playwright to fetch HTML."
                     )
-                    html_filepath = os.path.join(base_dir, "html", f"{filename}.html")
+                    html_filepath = os.path.join(crawl_path, "html", f"{filename}.html")
                     await fetch_content_with_playwright(url, html_filepath)
                     output_data.append(
                         [

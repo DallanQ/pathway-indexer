@@ -9,7 +9,7 @@ from utils.crawl import (
 
 dotenv.load_dotenv()
 
-def craw_data():
+def crawl_data():
     """Crawl the data from the csv file."""
     #load the path
     DATA_PATH = os.getenv("DATA_PATH")
@@ -21,9 +21,6 @@ def craw_data():
         # filter only the urls from whatsapp
         await crawl_csv(df, DATA_PATH)
 
-    if __name__ == "__main__":
-        loop = asyncio.get_event_loop()
-        loop.run_until_complete(main())
 
-
-craw_data()
+    loop = asyncio.get_event_loop()
+    loop.run_until_complete(main())

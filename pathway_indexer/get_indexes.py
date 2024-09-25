@@ -119,7 +119,6 @@ def get_indexes():
     df_merged.to_csv(f"{DATA_PATH}/all_links.csv", index=False)
 
     print("All data collected and saved!")
-    print("All links saved in all_links.csv")
-    print("Process finished!")
-
-get_indexes()
+    print(f"All links saved in {DATA_PATH}/all_links.csv")
+    print("Process finished! Links ready to be crawled.")
+    print()

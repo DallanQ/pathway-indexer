@@ -22,18 +22,18 @@ def parse_files_to_md(input_directory=DATA_PATH, out_folder=OUT_PATH, metadata_c
 
     # Step 1: Process all HTML and PDF files in the directory
     print("Starting file processing...")
-    # process_directory(input_directory, out_folder)
+    process_directory(input_directory, out_folder)
     print("File processing completed.\n")
 
     # Step 2: Associate Markdown files with metadata from CSV
     print("Associating Markdown files with metadata...")
-    metadata_dict = associate_markdown_with_metadata(DATA_PATH, OUT_PATH, metadata_csv)
-    print(metadata_dict)
+    metadata_dict = associate_markdown_with_metadata(input_directory, out_folder, metadata_csv)
+    # print the metadata dictionary with a json format
     print("Metadata association completed.\n")
 
     # Step 3: Attach metadata to Markdown files as YAML front matter
     print("Attaching metadata to Markdown files...")
-    # attach_metadata_to_markdown_directories(markdown_dirs, metadata_dict)
+    attach_metadata_to_markdown_directories(out_folder, metadata_dict)
     print("Metadata attachment completed.\n")
 
     print("All tasks completed successfully.")

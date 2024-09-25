@@ -2,6 +2,7 @@ import csv
 import logging
 import os
 import re
+import time
 
 import nest_asyncio
 import yaml
@@ -15,13 +16,12 @@ from unstructured_client.models import shared
 from unstructured_client.models.errors import SDKError
 
 from utils.markdown_utils import unstructured_elements_to_markdown
+from utils.tools import get_files
 
 # Set the logging level to WARNING or higher to suppress INFO messages
 logging.basicConfig(level=logging.WARNING)
 nest_asyncio.apply()
 load_dotenv()
-
-DATA_PATH = os.getenv("DATA_DIR")
 
 
 # Helper functions for cleaning and parsing HTML and PDF content
@@ -30,7 +30,9 @@ def clean_html(soup):
     title_text = soup.title.string if soup.title else None
 
     # Remove unnecessary elements
-    for tag in soup(["head", "style", "script", "img", "svg", "meta", "link", "iframe", "noscript"]):
+    for tag in soup(
+        ["head", "style", "script", "img", "svg", "meta", "link", "iframe", "noscript"]
+    ):
         tag.decompose()
 
     # Determine the content container (main or body)
@@ -42,7 +44,9 @@ def clean_html(soup):
         title_header.string = title_text
         content.insert(0, title_header)
 
-    return content or soup  # Return the cleaned content or the entire soup as a fallback
+    return (
+        content or soup
+    )  # Return the cleaned content or the entire soup as a fallback
 
 
 def clean_text(text):
@@ -72,14 +76,16 @@ def clean_text(text):
         text = text[1:-1].strip()
 
     # Remove leading and trailing quotes (both single and double)
-    if (text.startswith("'") and text.endswith("'")) or (text.startswith('"') and text.endswith('"')):
+    if (text.startswith("'") and text.endswith("'")) or (
+        text.startswith('"') and text.endswith('"')
+    ):
         text = text[1:-1].strip()
         text = text.replace("'", "").replace(",", " |")
 
     return text
 
 
-def parse_pdf_to_txt(file):
+def parse_pdf_to_txt(filepath, out_folder):
     """
     Parse PDF file to a text file.
     """
@@ -87,7 +93,8 @@ def parse_pdf_to_txt(file):
         api_key_auth=os.environ["UNSTRUCTURED_API_KEY"],
         server_url=os.environ["UNSTRUCTURED_SERVER_URL"],
     )
-    file_path = file["path"]
+
+    file_path = filepath
     print("Processing PDF file:", file_path)
 
     with open(file_path, "rb") as f:
@@ -104,25 +111,30 @@ def parse_pdf_to_txt(file):
         resp = s.general.partition(req)
     except SDKError as e:
         print(e)
-        return True
+        return "Error"
     except Exception as e:
         print("Another exception", e)
-        return True
+        return "Error"
 
     simple_md = unstructured_elements_to_markdown(resp.elements)
     simple_md = clean_text(simple_md)
 
-    file["size"] = len(simple_md)
-    file_out = file["path"].replace(".pdf", ".txt")
+    if not simple_md:
+        return "Error"
+
+    # filepath["size"] = len(simple_md)
+    file_out = os.path.join(
+        out_folder, "from_pdf", os.path.basename(file_path).replace(".pdf", ".txt")
+    )  # filepath["path"].replace(".pdf", ".txt")
 
     with open(file_out, "w", encoding="utf-8") as f:
         f.write(simple_md)
 
     print(f"Parsed PDF to TXT and saved to: {file_out}")
-    return False
+    return file_out
 
 
-def convert_html_to_markdown(file_path):
+def convert_html_to_markdown(file_path, out_folder):
     """
     Converts HTML content from a file to Markdown and saves it to a new .txt file.
     """
@@ -133,53 +145,89 @@ def convert_html_to_markdown(file_path):
     cleaned_soup = clean_html(soup)
     markdown_content = md(str(cleaned_soup))
 
-    base_filename = os.path.basename(file_path)
-    markdown_file_path = os.path.join("try", "txt", base_filename.replace(".html", ".txt"))
+    file_out = os.path.join(
+        out_folder, "from_html", os.path.basename(file_path).replace(".html", ".txt")
+    )
 
-    os.makedirs(os.path.dirname(markdown_file_path), exist_ok=True)
+    # base_filename = os.path.basename(file_path)
+    # markdown_file_path = os.path.join("try", "txt", base_filename.replace(".html", ".txt"))
 
-    with open(markdown_file_path, "w", encoding="utf-8") as f:
+    # os.makedirs(os.path.dirname(markdown_file_path), exist_ok=True)
+
+    # if the content is empty, return "Error"
+    if not markdown_content:
+        return "Error"
+
+    with open(file_out, "w", encoding="utf-8") as f:
         f.write(markdown_content)
 
-    print(f"Converted HTML to TXT and saved to: {markdown_file_path}")
+    print(f"Converted HTML to TXT and saved to: {file_out}")
+
+    return file_out
 
 
-def create_file_extractor():
-    parser = LlamaParse(
-        result_type="markdown",
-        parsing_instruction=(
-            "Convert the provided text into accurate and well-structured Markdown format, closely resembling the original PDF structure. "
-            "Use headers from H1 to H3, with H1 for main titles, H2 for sections, and H3 for subsections. "
-            "Detect any bold, large, or all-uppercase text as headers. "
-            "Preserve bullet points and numbered lists with proper indentation to reflect nested lists. "
-            "if it is not a header, ensure that bold and italic text is properly formatted using double **asterisks** for bold and single *asterisks* for italic"
-            "Detect and correctly format blockquotes using the '>' symbol for any quoted text. "
-            "When processing text, pay attention to line breaks that may incorrectly join or split words. "
-            "Automatically correct common errors, such as wrongly concatenated words or broken lines, to ensure the text reads naturally"
-            "If code snippets or technical commands are found, enclose them in triple backticks ``` for proper formatting. "
-            "If any tables are detected, parse them as a title (bold header) followed by list items"
-            "If you see the same header multiple times, merge them into one."
-            "If images contain important text, transcribe only the highlighted or boxed text and ignore general background text. "
-            "Do not enclose fragments of code/Markdown or any other content in triple backticks unless they are explicitly formatted as code blocks in the original text. "
-            "The final output should be a clean, concise Markdown document closely reflecting the original PDF's intent and structure without adding any extra text."
-        ),
-    )
+def create_file_extractor(parse_type="pdf"):
+    """Create a file extractor based on the parsing type (pdf or html)"""
+
+    if parse_type == ".pdf":
+        parser = LlamaParse(
+            result_type="markdown",
+            parsing_instruction=(
+                "Convert the provided text into accurate and well-structured Markdown format, closely resembling the original PDF structure. "
+                "Use headers from H1 to H3, with H1 for main titles, H2 for sections, and H3 for subsections. "
+                "Detect any bold, large, or all-uppercase text as headers. "
+                "Preserve bullet points and numbered lists with proper indentation to reflect nested lists. "
+                "if it is not a header, ensure that bold and italic text is properly formatted using double **asterisks** for bold and single *asterisks* for italic"
+                "Detect and correctly format blockquotes using the '>' symbol for any quoted text. "
+                "When processing text, pay attention to line breaks that may incorrectly join or split words. "
+                "Automatically correct common errors, such as wrongly concatenated words or broken lines, to ensure the text reads naturally"
+                "If code snippets or technical commands are found, enclose them in triple backticks ``` for proper formatting. "
+                "If any tables are detected, parse them as a title (bold header) followed by list items"
+                "If you see the same header multiple times, merge them into one."
+                "If images contain important text, transcribe only the highlighted or boxed text and ignore general background text. "
+                "Do not enclose fragments of code/Markdown or any other content in triple backticks unless they are explicitly formatted as code blocks in the original text. "
+                "The final output should be a clean, concise Markdown document closely reflecting the original PDF's intent and structure without adding any extra text."
+            ),
+        )
+    if parse_type == ".html":
+        parser = LlamaParse(
+            result_type="markdown",  # "markdown" and "text" are available
+            parsing_instruction=(
+                "Convert the provided text into accurate and well-structured Markdown format, strictly preserving the original structure. "
+                "Use headers from H1 to H3 only where they naturally occur in the text, and do not create additional headers or modify existing ones. "
+                "Do not split the text into multiple sections or alter the sequence of content. "
+                "Detect bold, large, or all-uppercase text as headers only if they represent a natural section break in the original text. "
+                "Preserve all links, ensuring that they remain correctly formatted and in their original place in the text. "
+                "Maintain bullet points and numbered lists with proper indentation to reflect any nested lists, ensuring list numbers remain in sequence. "
+                "If the text is not a header, ensure that bold and italic text is properly formatted using double **asterisks** for bold and single *asterisks* for italic. "
+                "Detect and correctly format blockquotes using the '>' symbol for any quoted text, but do not reformat text that is already in correct Markdown format. "
+                "Respect the original line breaks and text flow, avoiding unnecessary splits, merges, or reordering of content. "
+                "If any tables are detected, parse them as a title (bold header) followed by list items, but do not reformat existing Markdown tables. "
+                "Merge identical headers only if they represent the same section and their content is identical, ensuring no changes to the order of the text. "
+                "Do not enclose fragments of code/Markdown or any other content in triple backticks unless they are explicitly formatted as code blocks in the original text. "
+                "Ensure that the final output is a clean, concise Markdown document that closely reflects the original text's intent and structure, without adding or omitting any content."
+            ),
+        )
     file_extractor = {".txt": parser}
     return file_extractor
 
 
-def parse_txt_to_md(file):
+def parse_txt_to_md(file_path, file_extension):
     """
     Parses a .txt file to a Markdown (.md) file using LlamaParse.
     """
-    documents = SimpleDirectoryReader(input_files=[file], file_extractor=create_file_extractor()).load_data()
+    # get the file extension
+
+    documents = SimpleDirectoryReader(
+        input_files=[file_path], file_extractor=create_file_extractor(file_extension)
+    ).load_data()
 
     size = sum([len(doc.text) for doc in documents])
 
-    base_filename = os.path.basename(file)
-    out_name = os.path.join("try", "md", base_filename.replace(".txt", ".md"))
+    # base_filename = os.path.basename(file_path)
+    out_name = file_path.replace(".txt", ".md")
 
-    os.makedirs(os.path.dirname(out_name), exist_ok=True)
+    # os.makedirs(os.path.dirname(out_name), exist_ok=True)
 
     with open(out_name, "w", encoding="utf-8") as f:
         for doc in documents:
@@ -190,7 +238,7 @@ def parse_txt_to_md(file):
     return size
 
 
-def associate_markdown_with_metadata(markdown_dirs, csv_file):
+def associate_markdown_with_metadata(data_path, markdown_dirs, csv_file):
     """
     Associates Markdown files with metadata from a CSV file.
 
@@ -201,9 +249,11 @@ def associate_markdown_with_metadata(markdown_dirs, csv_file):
     Returns:
     - dict: Mapping of Markdown file paths to their corresponding metadata.
     """
+    # create the csv_path and open it, the data_path is related to the root but has 
+    csv_path = os.path.join(data_path, csv_file)
     # Read the CSV file and store the file paths, URLs, headings, and subheadings in a dictionary
     file_metadata_mapping = {}
-    with open(csv_file, newline="", encoding="utf-8") as file:
+    with open(csv_path, newline="", encoding="utf-8") as file:
         reader = csv.DictReader(file)
         for row in reader:
             # Extract the filename without the extension and use it as the key
@@ -214,7 +264,11 @@ def associate_markdown_with_metadata(markdown_dirs, csv_file):
             file_metadata_mapping[filename_without_ext] = {
                 "url": row["URL"],
                 "heading": clean_text(row["Section"]),
-                "subheading": clean_text(row["Subsection"]) if clean_text(row["Subsection"]) != "Missing" else "",
+                "subheading": (
+                    clean_text(row["Subsection"])
+                    if clean_text(row["Subsection"]) != "Missing"
+                    else ""
+                ),
                 "title": clean_text(row["Title"]),
             }
 
@@ -222,18 +276,22 @@ def associate_markdown_with_metadata(markdown_dirs, csv_file):
     markdown_metadata_mapping = {}
 
     # Loop through each directory provided
-    for markdown_dir in markdown_dirs:
-        for markdown_filename in os.listdir(markdown_dir):
-            # Get the markdown filename without the extension
-            markdown_filename_without_ext = os.path.splitext(markdown_filename)[0]
 
-            # Check if the filename matches any entry in the CSV dictionary
-            if markdown_filename_without_ext in file_metadata_mapping:
-                # Store the path relative to the directory
-                full_path = os.path.join(markdown_dir, markdown_filename)
-                markdown_metadata_mapping[full_path] = file_metadata_mapping[markdown_filename_without_ext]
-            else:
-                print(f"No metadata found for {markdown_filename}. Skipping.")
+    all_files = get_files(markdown_dirs)
+
+    for markdown_path in all_files:
+        # Get the markdown filename without the extension
+        markdown_filename_without_ext = os.path.splitext(os.path.basename(markdown_path))[0]
+
+        # Check if the filename matches any entry in the CSV dictionary
+        if markdown_filename_without_ext in file_metadata_mapping:
+            # Store the path relative to the directory
+            # full_path = os.path.join(markdown_dir, markdown_filename)
+            markdown_metadata_mapping[markdown_path] = file_metadata_mapping[
+                markdown_filename_without_ext
+            ]
+        else:
+            print(f"No metadata found for {markdown_path}. Skipping.")
 
     # Debugging: Print the mapping
     print("Markdown files and their metadata:")
@@ -261,100 +319,101 @@ def attach_metadata_to_markdown_directories(markdown_dirs, metadata_dict):
     - metadata_dict (dict): Mapping of Markdown file paths to their corresponding metadata.
     """
     # Loop through each directory provided
-    for directory_path in markdown_dirs:
-        # Loop through each markdown file in the directory
-        for filename in os.listdir(directory_path):
-            if filename.endswith(".md"):
-                file_path = os.path.join(directory_path, filename)
-                if file_path in metadata_dict:  # Check if full path is in metadata_dict
-                    # Extract metadata
-                    metadata = metadata_dict[file_path]
 
-                    # Open the markdown file, remove existing YAML front matter, and prepend new metadata
-                    with open(file_path, "r+", encoding="utf-8") as file:
-                        content = file.read()
-                        # Remove any existing front matter
-                        content_without_frontmatter = remove_existing_yaml_frontmatter(content)
-                        # Prepare the new YAML front matter
-                        yaml_metadata = yaml.dump(metadata, default_flow_style=False, allow_unicode=True)
-                        front_matter = f"---\n{yaml_metadata}---\n"
-                        # Write the new front matter and content back to the file
-                        file.seek(0, 0)
-                        file.write(front_matter + content_without_frontmatter)
-                        file.truncate()  # Ensure the file doesn't retain any old content beyond the new content
-                    print(f"Metadata attached to {file_path}")
-                else:
-                    print(f"No metadata found for {file_path}. Skipping.")
+    all_files = get_files(markdown_dirs, ignored="error/")
+
+    # Loop through each markdown file in the directory
+    for file_path in all_files:
+        if file_path.endswith(".md"):
+            if file_path in metadata_dict:  # Check if full path is in metadata_dict
+                # Extract metadata
+                metadata = metadata_dict[file_path]
+
+                # Open the markdown file, remove existing YAML front matter, and prepend new metadata
+                with open(file_path, "r+", encoding="utf-8") as file:
+                    content = file.read()
+                    # Remove any existing front matter
+                    content_without_frontmatter = remove_existing_yaml_frontmatter(
+                        content
+                    )
+                    # Prepare the new YAML front matter
+                    yaml_metadata = yaml.dump(
+                        metadata, default_flow_style=False, allow_unicode=True
+                    )
+                    front_matter = f"---\n{yaml_metadata}---\n"
+                    # Write the new front matter and content back to the file
+                    file.seek(0, 0)
+                    file.write(front_matter + content_without_frontmatter)
+                    file.truncate()  # Ensure the file doesn't retain any old content beyond the new content
+                print(f"Metadata attached to {file_path}")
+            else:
+                print(f"No metadata found for {file_path}. Skipping.")
 
 
-def process_file(file_path):
+def process_file(file_path, out_folder):
     """
     Processes a file based on its extension: PDF or HTML.
     """
+
+    txt_file_path = ""
+    # get the file extension
+    file_extension = os.path.splitext(file_path)[1]
+
     if file_path.lower().endswith(".pdf"):
         # Handle PDF file
-        file_info = {"path": file_path}
-        parse_pdf_to_txt(file_info)
+        # Intenta un maximo de 3 veces ejecutar el parse_pdf_to_txt solo si se obtiene "Error"
+        for _ in range(3):
+            txt_file_path = parse_pdf_to_txt(file_path, out_folder)
+            if txt_file_path != "Error":
+                break
+            print("Error parsing PDF file. Retrying...")
+            time.sleep(4)
+
+        # txt_file_path = parse_pdf_to_txt(file_path, out_folder)
 
         # Parse the resulting .txt to .md
-        txt_file_path = file_info["path"].replace(".pdf", ".txt")
-        parse_txt_to_md(txt_file_path)
+        # txt_file_path = file_info["path"].replace(".pdf", ".txt")
+        # txt_file_path = os.path.join(out_path, "from_pdf", file_path.replace(".pdf", ".txt"))
 
     elif file_path.lower().endswith(".html"):
         # Handle HTML file
-        convert_html_to_markdown(file_path)
+        # convert_html_to_markdown(file_path)
+        for _ in range(3):
+            txt_file_path = convert_html_to_markdown(file_path, out_folder)
+            if txt_file_path != "Error":
+                break
+            print("Error converting HTML file. Retrying...")
+            time.sleep(4)
 
         # Parse the resulting .txt to .md
-        txt_file_path = os.path.join("try", "txt", os.path.basename(file_path).replace(".html", ".txt"))
-        parse_txt_to_md(txt_file_path)
+        # txt_file_path = os.path.join("try", "txt", os.path.basename(file_path).replace(".html", ".txt"))
+        # txt_file_path = os.path.join(out_folder, "from_html", file_path.replace(".pdf", ".txt"))
+
+    # parse_txt_to_md(txt_file_path, file_extension)
+    # try a maximum of 3 times to parse the txt file to md
+    for _ in range(3):
+        size = parse_txt_to_md(txt_file_path, file_extension)
+        if size:
+            #remove the txt file
+            os.remove(txt_file_path)
+            return
+        print("Error parsing TXT file to MD. Retrying...")
+        time.sleep(4)
+
+    # move the txt file to the error folder
+    error_folder = os.path.join(out_folder, "error")
+    # os.makedirs(error_folder, exist_ok=True)
+    os.rename(txt_file_path, os.path.join(error_folder, os.path.basename(txt_file_path)))
+    print(f"Error parsing TXT file to MD. Moved to {error_folder}")
 
 
-def process_directory(directory):
+def process_directory(origin_path, out_folder):
     """
     Processes all HTML and PDF files in the specified directory.
     """
-    for root, _dirs, files in os.walk(directory):
+    for root, _dirs, files in os.walk(origin_path):
         for file in files:
             if file.lower().endswith((".html", ".pdf")):
                 file_path = os.path.join(root, file)
                 print(f"Processing file: {file_path}")
-                process_file(file_path)
-
-
-def main(input_directory=DATA_PATH, metadata_csv="all_links.csv"):
-    """
-    Main function to process a directory containing HTML and PDF files and attach metadata.
-
-    Parameters:
-    - input_directory (str): Path to the directory containing HTML and PDF files.
-    - metadata_csv (str): Path to the CSV file containing metadata.
-    """
-    if not os.path.isdir(input_directory):
-        print(f"Directory not found: {input_directory}")
-        return
-
-    # Step 1: Process all HTML and PDF files in the directory
-    print("Starting file processing...")
-    process_directory(input_directory)
-    print("File processing completed.\n")
-
-    # Step 2: Associate Markdown files with metadata from CSV
-    print("Associating Markdown files with metadata...")
-    markdown_dirs = [os.path.join(DATA_PATH, "md")]  # Directory where Markdown files are saved
-    metadata_dict = associate_markdown_with_metadata(markdown_dirs, metadata_csv)
-    print("Metadata association completed.\n")
-
-    # Step 3: Attach metadata to Markdown files as YAML front matter
-    print("Attaching metadata to Markdown files...")
-    attach_metadata_to_markdown_directories(markdown_dirs, metadata_dict)
-    print("Metadata attachment completed.\n")
-
-    print("All tasks completed successfully.")
-
-
-if __name__ == "__main__":
-    # You can modify these paths as needed
-    INPUT_DIRECTORY = DATA_PATH  # Directory containing HTML and PDF files
-    METADATA_CSV = os.path.join(DATA_PATH, "all_links.csv")  # Path to your metadata CSV file
-
-    main(input_directory=INPUT_DIRECTORY, metadata_csv=METADATA_CSV)
+                process_file(file_path, out_folder)

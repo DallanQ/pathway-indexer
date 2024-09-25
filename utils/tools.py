@@ -12,3 +12,14 @@ def generate_hash_filename(url):
     url_hash = zlib.crc32(url.encode())
     file_name = f"{url_hash:x}"
     return file_name
+
+def get_files(path_dir, ignored=""):
+    """Get all files in a directory"""
+    all_files = []
+    for root, dirs, files in os.walk(path_dir):
+        all_files += [os.path.join(root, file) for file in files]
+
+    # ignore files with the ignored string
+    if ignored:
+        all_files = [file for file in all_files if ignored not in file]
+    return all_files

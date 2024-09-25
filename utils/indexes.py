@@ -103,6 +103,7 @@ def create_root_folders(root):
     create_folder(out_folder, "from_html")
     create_folder(out_folder, "from_pdf")
     create_folder(out_folder, "from_others")
+    create_folder(out_folder, "error")
 
 def get_soup_content(url):
     """Get the soup object from the url."""

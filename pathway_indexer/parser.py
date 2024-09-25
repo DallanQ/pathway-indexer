@@ -1,0 +1,39 @@
+import os 
+from utils.parser import (
+    process_directory,
+    associate_markdown_with_metadata,
+    attach_metadata_to_markdown_directories
+)
+
+DATA_PATH = os.getenv("DATA_PATH")
+OUT_PATH = os.path.join(DATA_PATH, "out")
+
+def parse_files_to_md(input_directory=DATA_PATH, out_folder=OUT_PATH, metadata_csv="all_links.csv"):
+    """
+    Main function to process a directory containing HTML and PDF files and attach metadata.
+
+    Parameters:
+    - input_directory (str): Path to the directory containing HTML and PDF files.
+    - metadata_csv (str): Path to the CSV file containing metadata.
+    """
+    if not os.path.isdir(input_directory):
+        print(f"Directory not found: {input_directory}")
+        return
+
+    # Step 1: Process all HTML and PDF files in the directory
+    print("Starting file processing...")
+    # process_directory(input_directory, out_folder)
+    print("File processing completed.\n")
+
+    # Step 2: Associate Markdown files with metadata from CSV
+    print("Associating Markdown files with metadata...")
+    metadata_dict = associate_markdown_with_metadata(DATA_PATH, OUT_PATH, metadata_csv)
+    print(metadata_dict)
+    print("Metadata association completed.\n")
+
+    # Step 3: Attach metadata to Markdown files as YAML front matter
+    print("Attaching metadata to Markdown files...")
+    # attach_metadata_to_markdown_directories(markdown_dirs, metadata_dict)
+    print("Metadata attachment completed.\n")
+
+    print("All tasks completed successfully.")

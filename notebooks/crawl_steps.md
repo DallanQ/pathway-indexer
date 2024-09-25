@@ -9,3 +9,5 @@
 4. Run `general_parse_html.ipynb` to parse the html files to markdown files.
 
 5. Run `pdf_to_md.ipynb` to convert the pdf files to markdown files.
+
+6. Run `one_column_quotes_to_train.ipynb`, it will create 2 files, one for validate 

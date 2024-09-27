@@ -50,9 +50,10 @@ async def get_whatsapp_content(url):
 async def fetch_content_with_playwright(url, filepath):
     """Fetch the content of a URL using Playwright and save it to a file."""
     async with async_playwright() as p:
-        browser = await p.chromium.launch()
+        browser = await p.chromium.launch(headless=True)
         page = await browser.new_page()
         await page.goto(url)
+        time.sleep(5)
         content = await page.content()
         with open(filepath, "w", encoding="utf-8") as f:
             f.write(content)
@@ -82,6 +83,10 @@ async def crawl_csv(df, base_dir, output_file="output_data.csv"):
         title = row[3]
         filename = row[4]
 
+        #! CURRENT EXCEPCION, IGNORE LINKS FROM sharepoint.com
+        if "sharepoint.com" in url:
+            return
+
         # Edit the title to become filename
 
         # Determine the filepaths
@@ -90,7 +95,7 @@ async def crawl_csv(df, base_dir, output_file="output_data.csv"):
 
         # Skip fetching if the file already exists
         if os.path.exists(html_filepath) or os.path.exists(pdf_filepath):
-            print(f"File already exists for {title}. Skipping fetch.")
+            print(f"File already exists for {filename}. Skipping fetch.")
             return
 
         retry_attempts = 3
@@ -103,12 +108,17 @@ async def crawl_csv(df, base_dir, output_file="output_data.csv"):
                 response.raise_for_status()  # http errors
                 content_type = response.headers.get("content-type")
 
-                if "faq.whatsapp" in url:
+                if any(domain in url for domain in ["faq.whatsapp"]):
                     content = await get_whatsapp_content(url)
                     filepath = html_filepath
                     with open(filepath, "w", encoding="utf-8") as f:
                         f.write(content)
                     content = content.encode("utf-8")
+                elif any(domain in url for domain in ["articulate.com", "myinstitute.churchofjesuschrist.org"]):
+                    # raise HTTPError
+                    response.status_code = 403
+
+                    raise requests.exceptions.HTTPError
                 elif "text/html" in content_type:
                     content = response.text.encode("utf-8")
                     filepath = html_filepath
@@ -149,6 +159,7 @@ async def crawl_csv(df, base_dir, output_file="output_data.csv"):
                 break  # Exit retry loop after successful fetch
 
             except requests.exceptions.HTTPError as http_err:
+                print(response.status_code)
                 if response.status_code == 403:
                     print(
                         f"Access forbidden for {url}: {http_err}. Using Playwright to fetch HTML."

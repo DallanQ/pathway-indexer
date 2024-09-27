@@ -1,3 +1,4 @@
+from cachetools import LRUCache
 import re
 
 import chromadb
@@ -123,6 +124,43 @@ def extract_question_ngrams(qa_df, ngram_size):
     return question_ngrams
 
 
+# cache embedding calls to speed up tests and go faster - not used
+# cache = LRUCache(maxsize=100_000)
+
+
+class CachedOpenAIEmbedding(OpenAIEmbedding):
+    def __init__(self, embed_model_name):
+        super().__init__(
+            model=embed_model_name,
+            embed_batch_size=100,
+            max_retries=25,
+            timeout=180,
+            reuse_client=True,        
+        )    
+
+    def _get_key(self, text):
+        return f"{self.model_name}|{text}"
+    
+    def _get_text_embedding(self, text: str) -> list[float]:
+        key = self._get_key(text)
+        if key not in cache:
+            embedding = super()._get_text_embedding(text)
+            cache[key] = embedding
+        return cache[key]
+
+    def _get_text_embeddings(self, texts: list[str]) -> list[list[float]]:
+        lookups = []
+        for text in texts:
+            key = self._get_key(text)
+            if key not in cache:
+                lookups.append(text)
+        embeddings = super()._get_text_embeddings(lookups) if len(lookups) > 0 else []
+        for lookup, embedding in zip(lookups, embeddings):
+            key = self._get_key(lookup)
+            cache[key] = embedding
+        return [cache[self._get_key(text)] for text in texts]
+
+    
 def objective(trial, documents, ngram_size, question_ngrams, f_beta=1.0):
     """
     This function is called by Optuna. It creates an index, run queries over the index,
@@ -138,20 +176,15 @@ def objective(trial, documents, ngram_size, question_ngrams, f_beta=1.0):
         "embed_model",
         [
             "text-embedding-3-small",
-            "text-embedding-3-large",
-            # "voyage-large-2-instruct",
+            # try these later
+            # "text-embedding-3-large",
+            # "voyage-3",
             # GPU runs out of memory with gte model
             # 'Alibaba-NLP/gte-large-en-v1.5',  # WARNING: this downloads 1.74G of data
         ],
     )
     if embed_model_name == "text-embedding-3-small" or embed_model_name == "text-embedding-3-large":
-        embed_model = OpenAIEmbedding(
-            model=embed_model_name,
-            embed_batch_size=10,
-            max_retries=25,
-            timeout=180,
-            reuse_client=False,
-        )
+        embed_model = CachedOpenAIEmbedding(embed_model_name)
 
     # define splitter
     splitter_name = trial.suggest_categorical(
@@ -174,7 +207,7 @@ def objective(trial, documents, ngram_size, question_ngrams, f_beta=1.0):
 
     elif splitter_name == "semantic":
         buffer_size = trial.suggest_int("buffer_size", 1, 3)
-        breakpoint_percentile_threshold = trial.suggest_int("breakpoint_percentile_threshold", 60, 95)
+        breakpoint_percentile_threshold = trial.suggest_int("breakpoint_percentile_threshold", 60, 85)
         splitter = SemanticSplitterNodeParser(
             buffer_size=buffer_size,
             breakpoint_percentile_threshold=breakpoint_percentile_threshold,
@@ -256,7 +289,7 @@ def run_pipeline(documents, splitter, embed_model, vector_store, include_prev_ne
         vector_store,
         embed_model=embed_model,
     )
-    nodes = pipeline.run(documents=documents, show_progress=True)
+    nodes = pipeline.run(documents=documents, show_progress=False)
 
     if include_prev_next_rel:
         for i in range(0, len(nodes)):

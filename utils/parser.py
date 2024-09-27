@@ -23,24 +23,127 @@ logging.basicConfig(level=logging.WARNING)
 nest_asyncio.apply()
 load_dotenv()
 
+def clean_title(title):
+    # replace enters with spaces
+    title = title.replace("\n", " ")
+    # replace a lot of spaces with one space
+    title = " ".join(title.split())
+    # trim the text
+    title = title.strip()
+
+    return title
+
+def is_empty_content(content):
+    content = content.replace("\n", "").replace(" ", "")
+    return not content
+
+import re
+    
+def clean_markdown(text):
+    text = re.sub(r'```markdown+', '', text)
+    
+    # Remove Markdown backticks
+    text = re.sub(r'```+', '', text)
+
+    # Remove inline code backticks (`text`)
+    text = re.sub(r'`+', '', text)
+
+    text = re.sub(r'\[Print\]\(javascript:window\.print\(\)\)', '', text)
+    
+    # Remove list of links with same anchors
+    text = re.sub(r'(?:(https?:\/\/[^\s]+)\s+){2,}', '', text)  # Remove repeated links
+
+    # Replace [link](#) and [link](url) with link text only
+    text = re.sub(r'\[([^\]]+)\]\(([^)]+)\)', r'\1', text)
+
+    # Remove lists of links to the same page (e.g., [All](#) [Web Pages](#))
+    text = re.sub(r'(\[([^\]]+)\]\(#\))+(?:\s|,)*', '', text)
+    
+    # Regular expression to remove unnecessary text from 
+    # knowledge base articles
+    # Remove specific table headers
+    text = re.sub(r'\| \*\*Bot Information\*\* \|\n\| --- \|', '', text)
+    text = re.sub(r'\| \*\*Information\*\* \|\n\| --- \|', '', text)
+    text = re.sub(r'Views:\n\n\|\s*Article Overview\s*\|\s*\n\|\s*---\s*\|\s*\n\|.*?\|','',text,flags=re.DOTALL)
+    text = re.sub(r'\|\s*Information\s*\|\s*\n\|\s*---\s*\|\s*\n\|.*?\|', '', text, flags=re.DOTALL)
+    text = re.sub(r'\|\s*Bot Information\s*\|\s*\n\|\s*---\s*\|\s*\n\|.*?\|', '', text, flags=re.DOTALL)
+    text = re.sub(r'\n\s*\*\*Information\*\*\s*\n', '\n', text)
+    text = re.sub(r'##? Views:\n\n\| \*\*Article Overview\*\* \|\n\| --- \|\n\|.*?\|', '', text, flags=re.DOTALL)
+    text = re.sub(r'Views:\n\n\| \*\*Article Overview\*\* \|\n\| --- \|\n\|.*?\|', '', text, flags=re.DOTALL)
+    text = re.sub(r'^\| Information \|\n', '', text, flags=re.MULTILINE)
+    text = re.sub(r'\*\s*(Home|Knowledge Base - Home|KA-\d+)\s*\n', '', text)
+    text = re.sub(r"(You’re offline.*?Knowledge Articles|Contoso, Ltd\.|BYU-Pathway Worldwide|Toggle navigation[.\w\s\*\+\-\:]+|Search Filter|Search\n|Knowledge Article Key:)", '', text)
+    text = re.sub(r"You’re offline\. This is a read only version of the page\.", '', text)
+    
+    # Others regular expressions to remove unnecessary text
+    # Remove empty headers
+    text = re.sub(r'^#+\s*$', '', text, flags=re.MULTILINE)
+    
+    # Remove text from WhatsApp navigation
+    text = re.sub(r"Copy link\S*", 'Copy link', text)
+    
+    # Remove text from the hall foundation menu
+    # text = re.sub(r"(Skip to content|Menu|[*+-].*)\n", '', text, flags=re.MULTILINE)
+
+    # Remove broken links
+    text = re.sub(r'\[([^\]]+)\]\.\n\n\((http[^\)]+)\) \(([^)]+)\)\.', r'\1 (\3).',  text)
+    
+    # Remove consecutive blank lines
+    text = re.sub(r'\n\s*\n\s*\n', '\n\n', text)
+
+    return text
 
 # Helper functions for cleaning and parsing HTML and PDF content
 def clean_html(soup):
+    """ Cleans the HTML content by removing unnecessary elements and extracting the title text."""
     # Extract the title text
     title_text = soup.title.string if soup.title else None
 
     # Remove unnecessary elements
     for tag in soup(
-        ["head", "style", "script", "img", "svg", "meta", "link", "iframe", "noscript"]
+        [
+            "head",
+            "style",
+            "script",
+            "img",
+            "svg",
+            "meta",
+            "link",
+            "iframe",
+            "noscript",
+            "footer",
+            "nav",
+            "ps-header"
+        ]
     ):
         tag.decompose()
 
+    # Create selectors to remove elements
+    selectors = [
+        '[aria-label="Search Filter"]',
+        '[aria-label*="Menu"]',
+        '[aria-label*="menu"]',
+        '[class*="menu"]',
+        '[class*="Menu"]',
+        '[role="region"]',
+        '[role="dialog"]',
+        ".sr-only",
+        ".navbar",
+        ".breadcrumb",
+        ".btn-toolbar",
+        ".skip-link",
+    ]
+
+    # Remove elements by selectors
+    for selector in selectors:
+        for tag in soup.select(selector):
+            tag.decompose()
     # Determine the content container (main or body)
     content = soup.main or soup.body
 
     if content and title_text:
         # Create a title header and insert it at the beginning
-        title_header = soup.new_tag("h1")
+        title_header = soup.new_tag("title")
         title_header.string = title_text
         content.insert(0, title_header)
 
@@ -143,19 +246,25 @@ def convert_html_to_markdown(file_path, out_folder):
 
     soup = BeautifulSoup(html_content, "html.parser")
     cleaned_soup = clean_html(soup)
-    markdown_content = md(str(cleaned_soup))
+
+    title = soup.contents[0]
+    # verify is the title is a title, if it is, save the text, if not, save ""
+    title_tag = title.text if title.name == "title" else ""
+    if title_tag:
+        # remove the title from the soup
+        title.decompose()
+
+    markdown_content = md(str(cleaned_soup), heading_style="ATX")
+
+    # Clean the \n from the markdown because sometimnes are too many, 3, 4 five or more, and replace it just for one \n
+    markdown_content = re.sub(r"\n{2,}", "\n\n", markdown_content)
 
     file_out = os.path.join(
         out_folder, "from_html", os.path.basename(file_path).replace(".html", ".txt")
     )
 
-    # base_filename = os.path.basename(file_path)
-    # markdown_file_path = os.path.join("try", "txt", base_filename.replace(".html", ".txt"))
-
-    # os.makedirs(os.path.dirname(markdown_file_path), exist_ok=True)
-
     # if the content is empty, return "Error"
-    if not markdown_content:
+    if is_empty_content(markdown_content):
         return "Error"
 
     with open(file_out, "w", encoding="utf-8") as f:
@@ -163,7 +272,7 @@ def convert_html_to_markdown(file_path, out_folder):
 
     print(f"Converted HTML to TXT and saved to: {file_out}")
 
-    return file_out
+    return file_out, title_tag
 
 
 def create_file_extractor(parse_type="pdf"):
@@ -212,7 +321,7 @@ def create_file_extractor(parse_type="pdf"):
     return file_extractor
 
 
-def parse_txt_to_md(file_path, file_extension):
+def parse_txt_to_md(file_path, file_extension, title_tag=""):
     """
     Parses a .txt file to a Markdown (.md) file using LlamaParse.
     """
@@ -222,20 +331,26 @@ def parse_txt_to_md(file_path, file_extension):
         input_files=[file_path], file_extractor=create_file_extractor(file_extension)
     ).load_data()
 
-    size = sum([len(doc.text) for doc in documents])
+    # size = sum([len(doc.text) for doc in documents])
+    # validate if the content is empty
+    is_empty = all([is_empty_content(doc.text) for doc in documents])
 
     # base_filename = os.path.basename(file_path)
     out_name = file_path.replace(".txt", ".md")
 
+    title_tag = clean_title(title_tag)
+
     # os.makedirs(os.path.dirname(out_name), exist_ok=True)
 
     with open(out_name, "w", encoding="utf-8") as f:
+        if title_tag:
+            f.write(f"title: {title_tag}\n")
         for doc in documents:
             f.write(doc.text)
             f.write("\n\n")
         print(f"Parsed TXT to MD and saved to: {out_name}")
 
-    return size
+    return is_empty
 
 
 def associate_markdown_with_metadata(data_path, markdown_dirs, csv_file):
@@ -309,12 +424,19 @@ def associate_markdown_with_metadata(data_path, markdown_dirs, csv_file):
                 # Guardar el archivo sin la primera línea
                 with open(markdown_path, "w", encoding="utf-8") as file:
                     file.writelines(lines)
+            
+            # clean the markdown file and save it
+            with open(markdown_path, "r", encoding="utf-8") as file:
+                content = file.read()
+                content = clean_markdown(content)
+            with open(markdown_path, "w", encoding="utf-8") as file:
+                file.write(content)
+
 
 
 
         else:
             print(f"No metadata found for {markdown_path}. Skipping.")
-            pass
 
     # Debugging: Print the mapping
     print("Markdown files and their metadata:")
@@ -379,12 +501,12 @@ def process_file(file_path, out_folder):
     """
 
     txt_file_path = ""
+    title_tag = ""
     # get the file extension
     file_extension = os.path.splitext(file_path)[1]
 
     if file_path.lower().endswith(".pdf"):
         # Handle PDF file
-        # Intenta un maximo de 3 veces ejecutar el parse_pdf_to_txt solo si se obtiene "Error"
         for _ in range(3):
             txt_file_path = parse_pdf_to_txt(file_path, out_folder)
             if txt_file_path != "Error":
@@ -392,31 +514,19 @@ def process_file(file_path, out_folder):
             print("Error parsing PDF file. Retrying...")
             time.sleep(4)
 
-        # txt_file_path = parse_pdf_to_txt(file_path, out_folder)
-
-        # Parse the resulting .txt to .md
-        # txt_file_path = file_info["path"].replace(".pdf", ".txt")
-        # txt_file_path = os.path.join(out_path, "from_pdf", file_path.replace(".pdf", ".txt"))
-
     elif file_path.lower().endswith(".html"):
         # Handle HTML file
-        # convert_html_to_markdown(file_path)
         for _ in range(3):
-            txt_file_path = convert_html_to_markdown(file_path, out_folder)
+            txt_file_path, title_tag = convert_html_to_markdown(file_path, out_folder)
             if txt_file_path != "Error":
                 break
             print("Error converting HTML file. Retrying...")
             time.sleep(4)
 
-        # Parse the resulting .txt to .md
-        # txt_file_path = os.path.join("try", "txt", os.path.basename(file_path).replace(".html", ".txt"))
-        # txt_file_path = os.path.join(out_folder, "from_html", file_path.replace(".pdf", ".txt"))
-
-    # parse_txt_to_md(txt_file_path, file_extension)
     # try a maximum of 3 times to parse the txt file to md
     for _ in range(3):
-        size = parse_txt_to_md(txt_file_path, file_extension)
-        if size:
+        is_empty = parse_txt_to_md(txt_file_path, file_extension, title_tag)
+        if not is_empty:
             #remove the txt file
             os.remove(txt_file_path)
             return
@@ -425,8 +535,7 @@ def process_file(file_path, out_folder):
 
     # move the txt file to the error folder
     error_folder = os.path.join(out_folder, "error")
-    # os.makedirs(error_folder, exist_ok=True)
-    os.rename(txt_file_path, os.path.join(error_folder, os.path.basename(txt_file_path)))
+    os.rename(txt_file_path, os.path.join(error_folder, os.path.basename(txt_file_path))) # moving the file
     print(f"Error parsing TXT file to MD. Moved to {error_folder}")
 
 
@@ -440,3 +549,42 @@ def process_directory(origin_path, out_folder):
                 file_path = os.path.join(root, file)
                 print(f"Processing file: {file_path}")
                 process_file(file_path, out_folder)
+
+def add_titles_tag(input_directory, out_folder):
+    all_files = get_files(input_directory)
+    # save only html files
+    html_files = [file for file in all_files if file.endswith(".html")]
+    out_files = get_files(out_folder)
+
+    # Load a soup object from each html, get the title, and add it to the first line of the markdown file
+    for file_path in html_files:
+        with open(file_path, "r", encoding="utf-8") as file:
+            content = file.read()
+        soup = BeautifulSoup(content, "html.parser")
+        title = soup.title.string if soup.title else ""
+        title = clean_title(title)
+        
+        if not title:
+            continue
+        
+        print(f"title exist in {file_path}")
+    
+        # get the markdown file by filename
+        filename = os.path.basename(file_path).replace(".html", ".md")
+        md_file = [file for file in out_files if filename in file]
+
+        if len(md_file) == 0:
+            print(f"Markdown file not found for {filename}")
+            continue
+        # open the file
+        with open(md_file[0], "r", encoding="utf-8") as file:
+            content = file.read()
+
+        with open(md_file[0], "w", encoding="utf-8") as f:
+            f.write(f"title: {title}\n")
+
+            f.write(content)
+
+
+        print(f"Title added to {filename}")
+        print()

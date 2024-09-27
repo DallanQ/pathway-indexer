@@ -2,7 +2,8 @@ import os
 from utils.parser import (
     process_directory,
     associate_markdown_with_metadata,
-    attach_metadata_to_markdown_directories
+    attach_metadata_to_markdown_directories,
+    add_titles_tag
 )
 
 DATA_PATH = os.getenv("DATA_PATH")
@@ -24,6 +25,9 @@ def parse_files_to_md(input_directory=DATA_PATH, out_folder=OUT_PATH, metadata_c
     print("Starting file processing...")
     process_directory(input_directory, out_folder)
     print("File processing completed.\n")
+
+    # Add titles
+    add_titles_tag(input_directory,out_folder)
 
     # Step 2: Associate Markdown files with metadata from CSV
     print("Associating Markdown files with metadata...")

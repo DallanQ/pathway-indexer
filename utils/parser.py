@@ -80,7 +80,7 @@ def clean_text(text):
         text.startswith('"') and text.endswith('"')
     ):
         text = text[1:-1].strip()
-        text = text.replace("'", "").replace(",", " |")
+        text = text.replace("'", "").replace(",", " |").replace("\n", " ")
 
     return text
 
@@ -251,6 +251,8 @@ def associate_markdown_with_metadata(data_path, markdown_dirs, csv_file):
     """
     # create the csv_path and open it, the data_path is related to the root but has 
     csv_path = os.path.join(data_path, csv_file)
+
+    all_files = get_files(markdown_dirs)
     # Read the CSV file and store the file paths, URLs, headings, and subheadings in a dictionary
     file_metadata_mapping = {}
     with open(csv_path, newline="", encoding="utf-8") as file:
@@ -277,8 +279,6 @@ def associate_markdown_with_metadata(data_path, markdown_dirs, csv_file):
 
     # Loop through each directory provided
 
-    all_files = get_files(markdown_dirs)
-
     for markdown_path in all_files:
         # Get the markdown filename without the extension
         markdown_filename_without_ext = os.path.splitext(os.path.basename(markdown_path))[0]
@@ -290,8 +290,31 @@ def associate_markdown_with_metadata(data_path, markdown_dirs, csv_file):
             markdown_metadata_mapping[markdown_path] = file_metadata_mapping[
                 markdown_filename_without_ext
             ]
+            # open the file, and read if the first line begins with "title: "
+            with open(markdown_path, "r", encoding="utf-8") as file:
+                lines = file.readlines()
+
+            if len(lines) == 0:
+                continue
+            # Revisar si la primera línea contiene el título
+            first_line = lines[0].strip()
+            if first_line.startswith("title: "):
+                # Extraer el título de la primera línea
+                title = first_line.replace("title: ", "")
+                markdown_metadata_mapping[markdown_path]["title_tag"] = title
+
+                # Eliminar la primera línea (la que contiene el título)
+                lines = lines[1:]
+
+                # Guardar el archivo sin la primera línea
+                with open(markdown_path, "w", encoding="utf-8") as file:
+                    file.writelines(lines)
+
+
+
         else:
             print(f"No metadata found for {markdown_path}. Skipping.")
+            pass
 
     # Debugging: Print the mapping
     print("Markdown files and their metadata:")

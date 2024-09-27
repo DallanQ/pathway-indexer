@@ -116,10 +116,9 @@ def get_indexes():
     ## add a final column with the hash filename
     df_merged["filename"] = df_merged["URL"].apply(generate_hash_filename)
     # save the files as "all_links.csv"
-    df_merged.to_csv(f"{DATA_PATH}/all_links.csv", index=False)
+    df_merged.to_csv(os.path.join(DATA_PATH, "all_links.csv"), index=False)
 
     print("All data collected and saved!")
-    print("All links saved in all_links.csv")
-    print("Process finished!")
-
-get_indexes()
+    print(f"All links saved in {DATA_PATH}/all_links.csv")
+    print("Process finished! Links ready to be crawled.")
+    print()

@@ -65,9 +65,9 @@ def get_data(soup: BeautifulSoup, selectors: Selectors) -> list:
             cur_header = clean(header_text)
             cur_sub_header = None
         elif elem.select(link):
-            if len(elem.select(link)) > 0 and elem.select(text):
+            if len(elem.select(link)) > 0:
                 link_text = elem.select(link)[0].get_attribute_list("href")[0]
-                text_text = elem.select(text)[0].text
+                text_text = elem.select(text)[0].text if len(elem.select(text)) else elem.select(link)[0].text
 
                 # save the row
                 rows.append(
@@ -103,6 +103,7 @@ def create_root_folders(root):
     create_folder(out_folder, "from_html")
     create_folder(out_folder, "from_pdf")
     create_folder(out_folder, "from_others")
+    create_folder(out_folder, "error")
 
 def get_soup_content(url):
     """Get the soup object from the url."""

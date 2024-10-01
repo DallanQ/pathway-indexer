@@ -16,7 +16,7 @@ from unstructured_client.models import shared
 from unstructured_client.models.errors import SDKError
 
 from utils.markdown_utils import unstructured_elements_to_markdown
-from utils.tools import get_files
+from utils.tools import get_files, get_domain
 
 # Set the logging level to WARNING or higher to suppress INFO messages
 logging.basicConfig(level=logging.WARNING)
@@ -353,7 +353,7 @@ def parse_txt_to_md(file_path, file_extension, title_tag=""):
     return is_empty
 
 
-def associate_markdown_with_metadata(data_path, markdown_dirs, csv_file):
+def associate_markdown_with_metadata(data_path, markdown_dirs, csv_file, excluded_domains):
     """
     Associates Markdown files with metadata from a CSV file.
 
@@ -364,7 +364,7 @@ def associate_markdown_with_metadata(data_path, markdown_dirs, csv_file):
     Returns:
     - dict: Mapping of Markdown file paths to their corresponding metadata.
     """
-    # create the csv_path and open it, the data_path is related to the root but has 
+    # create the csv_path and open it, the data_path is related to the root but has
     csv_path = os.path.join(data_path, csv_file)
 
     all_files = get_files(markdown_dirs)
@@ -413,10 +413,14 @@ def associate_markdown_with_metadata(data_path, markdown_dirs, csv_file):
                 continue
             # Revisar si la primera línea contiene el título
             first_line = lines[0].strip()
+
+            # get the url from the metadata
+            url = markdown_metadata_mapping[markdown_path]["url"]
             if first_line.startswith("title: "):
                 # Extraer el título de la primera línea
                 title = first_line.replace("title: ", "")
-                markdown_metadata_mapping[markdown_path]["title_tag"] = title
+                if not get_domain(url) in excluded_domains:
+                    markdown_metadata_mapping[markdown_path]["title_tag"] = title
 
                 # Eliminar la primera línea (la que contiene el título)
                 lines = lines[1:]

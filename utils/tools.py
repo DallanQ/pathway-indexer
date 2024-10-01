@@ -23,3 +23,8 @@ def get_files(path_dir, ignored=""):
     if ignored:
         all_files = [file for file in all_files if ignored not in file]
     return all_files
+
+def get_domain(url):
+    """Get the domain from a URL."""
+    domain = url.split("//")[-1].split("/")[0]
+    return domain

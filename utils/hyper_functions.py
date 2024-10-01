@@ -1,3 +1,4 @@
+import os
 import re
 from typing import Any, Optional
 
@@ -10,6 +11,7 @@ from llama_index.core.schema import BaseNode, MetadataMode, TextNode
 from llama_index.core.ingestion import IngestionPipeline
 from llama_index.core.utils import get_tqdm_iterable
 from llama_index.core import VectorStoreIndex
+from llama_index.vector_stores.pinecone import PineconeVectorStore
 
 INDEX_METADATA_KEYS = [
     "heading",
@@ -495,3 +497,19 @@ def run_pipeline(documents, splitter, embed_model, vector_store, include_prev_ne
     index.insert_nodes(nodes)
     print(f"Nodes inserted: {len(nodes)}")
     return index, nodes  # CHANGED
+
+def get_vector_store():
+    api_key = os.getenv("PINECONE_API_KEY")
+    index_name = os.getenv("PINECONE_INDEX_NAME")
+    environment = os.getenv("PINECONE_ENVIRONMENT")
+    if not api_key or not index_name or not environment:
+        raise ValueError(
+            "Please set PINECONE_API_KEY, PINECONE_INDEX_NAME, and PINECONE_ENVIRONMENT"
+            " to your environment variables or config them in the .env file"
+        )
+    store = PineconeVectorStore(
+        api_key=api_key,
+        index_name=index_name,
+        environment=environment,
+    )
+    return store

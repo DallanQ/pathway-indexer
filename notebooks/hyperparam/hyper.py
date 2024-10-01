@@ -4,15 +4,16 @@ from llama_index.core import Document
 
 from llama_index.embeddings.openai import OpenAIEmbedding
 from llama_index.core.vector_stores.types import VectorStoreQueryMode
-from llama_index.vector_stores.chroma import ChromaVectorStore
-import chromadb
+# from llama_index.vector_stores.chroma import ChromaVectorStore
+# import chromadb
 
 dotenv.load_dotenv()
 
 from utils.hyper_functions import (
     extract_index_metadata,
     AltNodeParser,
-    run_pipeline
+    run_pipeline,
+    get_vector_store
 )
 
 
@@ -94,14 +95,16 @@ splitter = AltNodeParser().from_defaults(
 
 # define index
 query_mode = VectorStoreQueryMode.DEFAULT
-index_type = "chromadb"
+# index_type = "chromadb"
 
-chroma_client = chromadb.EphemeralClient()
+# chroma_client = chromadb.EphemeralClient()
 # delete collection if it exists
-if any(coll.name == "test" for coll in chroma_client.list_collections()):
-    chroma_client.delete_collection("test")
-chroma_collection = chroma_client.create_collection("test")
-vector_store = ChromaVectorStore(chroma_collection=chroma_collection)
+# if any(coll.name == "test" for coll in chroma_client.list_collections()):
+#     chroma_client.delete_collection("test")
+# chroma_collection = chroma_client.create_collection("test")
+# vector_store = ChromaVectorStore(chroma_collection=chroma_collection)
+
+vector_store = get_vector_store()
 
 retriever_threshold = 0.0
 retriever_k = 35
@@ -121,4 +124,3 @@ retriever = index.as_retriever(
     similarity_top_k=retriever_k,
     sparse_top_k=sparse_k,
 )
-

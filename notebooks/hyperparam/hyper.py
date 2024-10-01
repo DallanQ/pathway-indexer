@@ -1,16 +1,13 @@
 import os
 
-import chromadb
-import dotenv
 from llama_index.core import Document
 from llama_index.core.vector_stores.types import VectorStoreQueryMode
 from llama_index.embeddings.openai import OpenAIEmbedding
-from llama_index.vector_stores.chroma import ChromaVectorStore
 
-from utils.hyper_functions import AltNodeParser, extract_index_metadata, run_pipeline
+from utils.hyper_functions import AltNodeParser, extract_index_metadata, get_vector_store, run_pipeline
 
-dotenv.load_dotenv()
-
+# from llama_index.vector_stores.chroma import ChromaVectorStore
+# import chromadb
 
 datapath = os.getenv("DATA_PATH")
 
@@ -91,14 +88,16 @@ splitter = AltNodeParser().from_defaults(
 
 # define index
 query_mode = VectorStoreQueryMode.DEFAULT
-index_type = "chromadb"
+# index_type = "chromadb"
 
-chroma_client = chromadb.EphemeralClient()
+# chroma_client = chromadb.EphemeralClient()
 # delete collection if it exists
-if any(coll.name == "test" for coll in chroma_client.list_collections()):
-    chroma_client.delete_collection("test")
-chroma_collection = chroma_client.create_collection("test")
-vector_store = ChromaVectorStore(chroma_collection=chroma_collection)
+# if any(coll.name == "test" for coll in chroma_client.list_collections()):
+#     chroma_client.delete_collection("test")
+# chroma_collection = chroma_client.create_collection("test")
+# vector_store = ChromaVectorStore(chroma_collection=chroma_collection)
+
+vector_store = get_vector_store()
 
 retriever_threshold = 0.0
 retriever_k = 35

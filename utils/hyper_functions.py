@@ -482,14 +482,14 @@ def run_pipeline(documents, splitter, embed_model, vector_store, include_prev_ne
     url = nodes[0].metadata['url']
     sequence = 1
  
-    for i in range(0, len(nodes)):
-        if url == nodes[i].metadata['url']:
-            nodes[i].metadata['sequence'] = sequence
+    for _, node in enumerate(nodes):
+        if url == node.metadata['url']:
+            node.metadata['sequence'] = sequence
             sequence += 1
         else:
-            url = nodes[i].metadata['url']
+            url = node.metadata['url']
             sequence = 1
-            nodes[i].metadata['sequence'] = sequence
+            node.metadata['sequence'] = sequence
             sequence += 1
 
     index.insert_nodes(nodes)

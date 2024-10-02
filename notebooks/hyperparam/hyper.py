@@ -1,4 +1,5 @@
 import os
+import dotenv
 
 from llama_index.core import Document
 from llama_index.core.vector_stores.types import VectorStoreQueryMode
@@ -8,6 +9,8 @@ from utils.hyper_functions import AltNodeParser, extract_index_metadata, get_vec
 
 # from llama_index.vector_stores.chroma import ChromaVectorStore
 # import chromadb
+
+dotenv.load_dotenv()
 
 datapath = os.getenv("DATA_PATH")
 

@@ -474,12 +474,10 @@ def run_pipeline(documents, splitter, embed_model, vector_store, include_prev_ne
     )
     nodes = pipeline.run(documents=documents, show_progress=False)
 
-    # if include_prev_next_rel:
-    # for i in range(0, len(nodes)):
-    #     if i > 0:
-    #         nodes[i].metadata["prev"] = nodes[i - 1].text
-    #     if i < len(nodes) - 1:
-    #         nodes[i].metadata["next"] = nodes[i + 1].text
+    # from the metadata, remove the "context" key
+    for node in nodes:
+        if "context" in node.metadata:
+            del node.metadata["context"]
 
     url = nodes[0].metadata['url']
     sequence = 1

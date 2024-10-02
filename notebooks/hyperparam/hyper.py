@@ -1,21 +1,13 @@
 import os
-import dotenv
-from llama_index.core import Document
 
-from llama_index.embeddings.openai import OpenAIEmbedding
+from llama_index.core import Document
 from llama_index.core.vector_stores.types import VectorStoreQueryMode
+from llama_index.embeddings.openai import OpenAIEmbedding
+
+from utils.hyper_functions import AltNodeParser, extract_index_metadata, get_vector_store, run_pipeline
+
 # from llama_index.vector_stores.chroma import ChromaVectorStore
 # import chromadb
-
-dotenv.load_dotenv()
-
-from utils.hyper_functions import (
-    extract_index_metadata,
-    AltNodeParser,
-    run_pipeline,
-    get_vector_store
-)
-
 
 datapath = os.getenv("DATA_PATH")
 
@@ -31,8 +23,8 @@ print("Files list length: ", len(files_list))
 
 documents = []
 
-for i, filepath in enumerate(files_list):
-    with open(filepath, "r", encoding="utf-8") as file:
+for filepath in files_list:
+    with open(filepath, encoding="utf-8") as file:
         document = Document(text=file.read(), metadata={"filepath": filepath})
 
         # add the document to a single entry list
@@ -55,12 +47,13 @@ print("Metadata added to documents")
 embed_model_name = "text-embedding-3-large"
 
 embed_model = OpenAIEmbedding(
-            model=embed_model_name,
-            embed_batch_size=100,
-            max_retries=25,
-            timeout=180,
-            reuse_client=True,
-        )
+    model=embed_model_name,
+    embed_batch_size=100,
+    max_retries=25,
+    timeout=180,
+    reuse_client=True,
+    dimensions=3072,
+)
 
 split_by = "paragraph"  ### trial.suggest_categorical("split_by", ["sentence", "paragraph", "both"])
 embed_prev_next_sentences = 0  ### trial.suggest_int("embed_prev_next_sentences", 0, 5)

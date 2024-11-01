@@ -10,7 +10,7 @@ DATA_PATH = os.getenv("DATA_PATH")
 OUT_PATH = os.path.join(DATA_PATH, "out")
 EXCLUDED_PATH = os.path.join(DATA_PATH, "excluded_domains.txt")
 
-def parse_files_to_md(input_directory=DATA_PATH, out_folder=OUT_PATH, metadata_csv="all_links.csv"):
+def parse_files_to_md(input_directory=DATA_PATH, out_folder=OUT_PATH, metadata_csv="all_links.csv", excluded_domains_path=EXCLUDED_PATH):
     """
     Main function to process a directory containing HTML and PDF files and attach metadata.
 
@@ -33,7 +33,7 @@ def parse_files_to_md(input_directory=DATA_PATH, out_folder=OUT_PATH, metadata_c
     # Step 2: Associate Markdown files with metadata from CSV
     print("Associating Markdown files with metadata...")
     # load excluded domains as list
-    with open(EXCLUDED_PATH, "r", encoding="UTF-8") as f:
+    with open(excluded_domains_path, "r", encoding="UTF-8") as f:
         excluded_domains = f.read().splitlines()
     metadata_dict = associate_markdown_with_metadata(input_directory, out_folder, metadata_csv, excluded_domains)
     # print the metadata dictionary with a json format

@@ -1,19 +1,14 @@
-import os
 import csv
-import pandas as pd
+import os
+
 import dotenv
+import pandas as pd
 
-from utils.indexes import (
-  Selectors,
-  crawl_index,
-  create_root_folders,
-  get_soup_content,
-  get_handbook_data
-)
-
+from utils.indexes import Selectors, crawl_index, create_root_folders
 from utils.tools import generate_hash_filename
 
 dotenv.load_dotenv()
+
 
 def get_indexes():
     """Get the indexes from the websites."""
@@ -26,10 +21,8 @@ def get_indexes():
     # General Variables
     ACM_URL = "https://missionaries.prod.byu-pathway.psdops.com/ACC-site-index"
     MISSIONARY_URL = "https://missionaries.prod.byu-pathway.psdops.com/missionary-services-site-index"
-    HANDBOOK_URL = "https://www.byupathway.edu/policies/handbook/"
     acm_path = f"{DATA_PATH}/index/acm.csv"
     missionary_path = f"{DATA_PATH}/index/missionary.csv"
-    handbook_path = f"{DATA_PATH}/index/handbook.csv"
 
     # Selectors
     acm_selectors = Selectors(
@@ -42,14 +35,10 @@ def get_indexes():
     #! THERE WAS CHANGES IN THE MISSIONARY SELECTORS
     missionary_selectors = Selectors(
         header="h1",
-        sub_header='h2',
+        sub_header="h2",
         link="a",
         text="a > span",
     )
-
-    HANDNOOK_SELECTOR = "bsp-book>ul>li>bsp-chapter>ul>li>bsp-chapter"
-
-
 
     # Crawling Process
     acm_data = crawl_index(ACM_URL, acm_selectors)
@@ -60,12 +49,6 @@ def get_indexes():
     missionary_data = crawl_index(MISSIONARY_URL, missionary_selectors)
     print("Missionary data collected!")
     print(f"Lenght of missionary data: {len(missionary_data)}")
-    print()
-
-    handbook_soup = get_soup_content(HANDBOOK_URL)
-    handbook_data = get_handbook_data(handbook_soup, HANDNOOK_SELECTOR)
-    print("Handbook data collected!")
-    print(f"Lenght of handbook data: {len(handbook_data)}")
     print()
 
     # Save the data
@@ -80,36 +63,25 @@ def get_indexes():
         writer.writerow(["Section", "Subsection", "Title", "URL"])
         writer.writerows(missionary_data[2:])
 
-    # to save the handbook data we need to convert it to dataframe
-    handbook_df = pd.DataFrame(handbook_data, columns=["Section", "Title", "URL"])
-    handbook_df.insert(1, "Subsection", "")
-    handbook_df = handbook_df[~handbook_df["URL"].str.contains("#")]
-
-    handbook_df.to_csv(handbook_path, index=False)
-
-
     # *****Create the final dataframe*****
 
     index_path = os.path.join(DATA_PATH, "index")
 
     # Load the data into Dataframes
     df = pd.read_csv(f"{index_path}/acm.csv")
-    df2 = pd.read_csv(f"{index_path}/handbook.csv")
-    df3 = pd.read_csv(f"{index_path}/missionary.csv")
+    df2 = pd.read_csv(f"{index_path}/missionary.csv")
 
-    df = pd.concat([df, df2, df3], ignore_index=True)
+    df = pd.concat([df, df2], ignore_index=True)
 
     df.fillna("Missing", inplace=True)
 
     df_merged = (
         df.groupby("URL")
-        .agg(
-            {
-                "Section": list,
-                "Subsection": list,
-                "Title": list,
-            }
-        )
+        .agg({
+            "Section": list,
+            "Subsection": list,
+            "Title": list,
+        })
         .reset_index()
     )
 

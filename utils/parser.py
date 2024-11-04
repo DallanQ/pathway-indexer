@@ -567,12 +567,12 @@ def add_titles_tag(input_directory, out_folder):
         soup = BeautifulSoup(content, "html.parser")
         title = soup.title.string if soup.title else ""
         title = clean_title(title)
-        
+
         if not title:
             continue
-        
+
         print(f"title exist in {file_path}")
-    
+
         # get the markdown file by filename
         filename = os.path.basename(file_path).replace(".html", ".md")
         md_file = [file for file in out_files if filename in file]

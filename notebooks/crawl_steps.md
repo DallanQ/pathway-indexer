@@ -1,6 +1,6 @@
 # Steps to crawl the sites
 
-1. Parse indexes running `parse-indexes.ipynb`. This will create the `acm_site.csv` and `missionary_site.csv`.
+1. Parse indexes running `parse-indexes.ipynb` and `parse_and_crawl_help.ipynb`. This will create the `acm_site.csv` and `missionary_site.csv`.
 
 2. Run the `crawl_stdhndbk.ipynb` notebook to crawl the urls from the handbook and save as `stdhbk.csv`.
 

@@ -3,6 +3,7 @@ import os
 from typing import Any, cast
 import requests
 from bs4 import BeautifulSoup, Tag
+from playwright.async_api import async_playwright
 
 from utils.tools import create_folder
 
@@ -140,5 +141,41 @@ def get_handbook_data(soup, selector):
                 title = title_span.text.strip() if title_span else ""
                 url = link["href"]
                 data.append([section_name, title, url])
+
+    return data
+
+async def get_help_links(url, selector):
+    """Get the links from the help page."""
+    playwright = await async_playwright().start()
+    browser = await playwright.chromium.launch(headless=True)
+    page = await browser.new_page()
+
+    await page.goto(url)
+    await page.wait_for_load_state()
+
+    while True:
+        try:
+            await page.click("text=Show More...")
+            page.query_selector("#pagingButton")
+        except:
+            break
+
+    # get the element with id articleList
+    articles = await page.query_selector(selector)
+    # get all the links inside it, the link is the a tag, the title in the h5 tag inside the a tag and the descripcion in the p tag inside the a tag
+    links = await articles.query_selector_all("a")
+    data = []
+    for link in links:
+        title = await link.query_selector("h5")
+        description = await link.query_selector("p")
+        # the order is: header, subheader, title, url
+        data.append(
+            [
+                await title.inner_text(),
+                await description.inner_text(),
+                await title.inner_text(),
+                url + await link.get_attribute("href"),
+            ]
+        )
 
     return data

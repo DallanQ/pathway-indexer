@@ -4,8 +4,14 @@ import os
 import dotenv
 import pandas as pd
 
-from utils.indexes import Selectors, crawl_index, create_root_folders
+from utils.indexes import (
+    Selectors,
+    crawl_index,
+    create_root_folders,
+    get_help_links
+)
 from utils.tools import generate_hash_filename
+import asyncio
 
 dotenv.load_dotenv()
 
@@ -21,8 +27,11 @@ def get_indexes():
     # General Variables
     ACM_URL = "https://missionaries.prod.byu-pathway.psdops.com/ACC-site-index"
     MISSIONARY_URL = "https://missionaries.prod.byu-pathway.psdops.com/missionary-services-site-index"
+    HELP_URL = "https://help.byupathway.edu/knowledgebase/"
+
     acm_path = f"{DATA_PATH}/index/acm.csv"
     missionary_path = f"{DATA_PATH}/index/missionary.csv"
+    help_path = f"{DATA_PATH}/index/help.csv"
 
     # Selectors
     acm_selectors = Selectors(
@@ -40,6 +49,8 @@ def get_indexes():
         text="a > span",
     )
 
+    HELP_SELECTOR = "#articleList"
+
     # Crawling Process
     acm_data = crawl_index(ACM_URL, acm_selectors)
     print("Acm data collected!")
@@ -49,6 +60,11 @@ def get_indexes():
     missionary_data = crawl_index(MISSIONARY_URL, missionary_selectors)
     print("Missionary data collected!")
     print(f"Lenght of missionary data: {len(missionary_data)}")
+    print()
+
+    help_data = asyncio.run(get_help_links(HELP_URL, HELP_SELECTOR))
+    print("Help data collected!")
+    print(f"Lenght of help data: {len(help_data)}")
     print()
 
     # Save the data
@@ -63,6 +79,11 @@ def get_indexes():
         writer.writerow(["Section", "Subsection", "Title", "URL"])
         writer.writerows(missionary_data[2:])
 
+    with open(help_path, "w", newline="", encoding="UTF-8") as csvfile:
+        writer = csv.writer(csvfile)
+        writer.writerow(["Section", "Subsection", "Title", "URL"])
+        writer.writerows(help_data)
+
     # *****Create the final dataframe*****
 
     index_path = os.path.join(DATA_PATH, "index")
@@ -70,8 +91,9 @@ def get_indexes():
     # Load the data into Dataframes
     df = pd.read_csv(f"{index_path}/acm.csv")
     df2 = pd.read_csv(f"{index_path}/missionary.csv")
+    df3 = pd.read_csv(f"{index_path}/help.csv")
 
-    df = pd.concat([df, df2], ignore_index=True)
+    df = pd.concat([df, df2, df3], ignore_index=True)
 
     df.fillna("Missing", inplace=True)
 

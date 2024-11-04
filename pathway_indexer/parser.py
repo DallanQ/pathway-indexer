@@ -33,8 +33,11 @@ def parse_files_to_md(input_directory=DATA_PATH, out_folder=OUT_PATH, metadata_c
     # Step 2: Associate Markdown files with metadata from CSV
     print("Associating Markdown files with metadata...")
     # load excluded domains as list
-    with open(excluded_domains_path, "r", encoding="UTF-8") as f:
-        excluded_domains = f.read().splitlines()
+    if os.path.exists(excluded_domains_path):
+        with open(excluded_domains_path, "r", encoding="UTF-8") as f:
+            excluded_domains = f.read().splitlines()
+    else:
+        excluded_domains = []
     metadata_dict = associate_markdown_with_metadata(input_directory, out_folder, metadata_csv, excluded_domains)
     # print the metadata dictionary with a json format
     print("Metadata association completed.\n")

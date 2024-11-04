@@ -8,6 +8,7 @@ from playwright.async_api import async_playwright
 import requests
 import nest_asyncio
 import pandas as pd
+from bs4 import BeautifulSoup
 
 from utils.tools import create_folder
 
@@ -122,6 +123,12 @@ async def crawl_csv(df, base_dir, output_file="output_data.csv"):
                 elif "text/html" in content_type:
                     content = response.text.encode("utf-8")
                     filepath = html_filepath
+                    if "help.byupathway.edu" in url:
+                        # from the content, get the information from the .wrapper-body
+                        content = response.text
+                        soup = BeautifulSoup(content, "html.parser")
+                        content = soup.find("div", class_="wrapper-body").prettify()
+                        content = content.encode("utf-8")
                     with open(filepath, "w", encoding="utf-8") as f:
                         f.write(response.text)
 

@@ -97,6 +97,9 @@ def get_indexes():
 
     df.fillna("Missing", inplace=True)
 
+    # remove from the urls, the # and everything after it
+    df["URL"] = df["URL"].str.split("#").str[0]
+
     df_merged = (
         df.groupby("URL")
         .agg({

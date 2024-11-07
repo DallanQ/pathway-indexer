@@ -60,6 +60,29 @@ async def fetch_content_with_playwright(url, filepath):
             f.write(content)
         await browser.close()
 
+async def fetch_content_from_student_services(urls):
+    """ Fetch content from student services page with tabs"""
+    plw = await async_playwright().start()
+    brwsr = await plw.chromium.launch()
+    pg = await brwsr.new_page()
+    content = ""
+    for url in urls:
+        print("crawling subpage: ", url["url"])
+        await pg.goto(url["url"])
+        await pg.wait_for_load_state()
+        cntnt = await pg.content()
+        soup = BeautifulSoup(cntnt, "html.parser")
+        art = soup.find("article", class_="main-content").prettify()
+        # crete an h1 tag with the title and addit to the art as the first child of the article
+
+        h1 = soup.new_tag("h1")
+        h1.string = url["title"]
+        art = art.replace(">", f">{h1}",1)
+        content += art
+    
+    await brwsr.close()
+    return content
+
 
 async def crawl_csv(df, base_dir, output_file="output_data.csv"):
     """Takes CSV file in the format Heading, Subheading, Title, URL and processes each URL."""
@@ -122,15 +145,33 @@ async def crawl_csv(df, base_dir, output_file="output_data.csv"):
                     raise requests.exceptions.HTTPError
                 elif "text/html" in content_type:
                     content = response.text.encode("utf-8")
+                    text_content = response.text
                     filepath = html_filepath
                     if "help.byupathway.edu" in url:
                         # from the content, get the information from the .wrapper-body
                         content = response.text
                         soup = BeautifulSoup(content, "html.parser")
                         content = soup.find("div", class_="wrapper-body").prettify()
+                        text_content = content
+                        content = content.encode("utf-8")
+                    elif "student-services.catalog.prod.coursedog.com" in url:
+                        content = response.text
+                        soup = BeautifulSoup(content, "html.parser")
+                        content = soup.find("article", class_="main-content").prettify()
+                        tablist = soup.find("div", {"role": "tablist"})
+                        if tablist:
+                            tab_links = tablist.find_all("a")
+                            # get only the links
+                            tab_links = [{
+                                "title": link.text.strip(),
+                                "url": url+ "#" + link.get("href").split("#")[1]
+                            } for link in tab_links if "#" in link.get("href")]
+                            tab_content = await fetch_content_from_student_services(tab_links)
+                            content += tab_content
+                        text_content = content
                         content = content.encode("utf-8")
                     with open(filepath, "w", encoding="utf-8") as f:
-                        f.write(response.text)
+                        f.write(text_content)
 
                 elif "application/pdf" in content_type:
                     content = response.content

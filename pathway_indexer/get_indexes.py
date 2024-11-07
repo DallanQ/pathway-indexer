@@ -8,7 +8,8 @@ from utils.indexes import (
     Selectors,
     crawl_index,
     create_root_folders,
-    get_help_links
+    get_help_links,
+    get_services_links
 )
 from utils.tools import generate_hash_filename
 import asyncio
@@ -28,10 +29,12 @@ def get_indexes():
     ACM_URL = "https://missionaries.prod.byu-pathway.psdops.com/ACC-site-index"
     MISSIONARY_URL = "https://missionaries.prod.byu-pathway.psdops.com/missionary-services-site-index"
     HELP_URL = "https://help.byupathway.edu/knowledgebase/"
+    STUDENT_SERVICES_URL = "https://student-services.catalog.prod.coursedog.com/"
 
     acm_path = f"{DATA_PATH}/index/acm.csv"
     missionary_path = f"{DATA_PATH}/index/missionary.csv"
     help_path = f"{DATA_PATH}/index/help.csv"
+    student_services_path = f"{DATA_PATH}/index/student_services.csv"
 
     # Selectors
     acm_selectors = Selectors(
@@ -67,6 +70,11 @@ def get_indexes():
     print(f"Lenght of help data: {len(help_data)}")
     print()
 
+    student_services_data = asyncio.run(get_services_links(STUDENT_SERVICES_URL))
+    print("Student Services data collected!")
+    print(f"Lenght of Student Services data: {len(student_services_data)}")
+    print()
+
     # Save the data
     with open(acm_path, "w", newline="", encoding="UTF-8") as csvfile:
         writer = csv.writer(csvfile)
@@ -84,6 +92,11 @@ def get_indexes():
         writer.writerow(["Section", "Subsection", "Title", "URL"])
         writer.writerows(help_data)
 
+    with open(student_services_path, "w", newline="", encoding="UTF-8") as csvfile:
+        writer = csv.writer(csvfile)
+        writer.writerow(["Section", "Subsection", "Title", "URL"])
+        writer.writerows(student_services_data)
+
     # *****Create the final dataframe*****
 
     index_path = os.path.join(DATA_PATH, "index")
@@ -92,8 +105,9 @@ def get_indexes():
     df = pd.read_csv(f"{index_path}/acm.csv")
     df2 = pd.read_csv(f"{index_path}/missionary.csv")
     df3 = pd.read_csv(f"{index_path}/help.csv")
+    df4 = pd.read_csv(f"{index_path}/student_services.csv")
 
-    df = pd.concat([df, df2, df3], ignore_index=True)
+    df = pd.concat([df, df2, df3, df4], ignore_index=True)
 
     df.fillna("Missing", inplace=True)
 

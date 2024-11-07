@@ -234,6 +234,12 @@ async def crawl_csv(df, base_dir, output_file="output_data.csv"):
             "Content Hash",
         ],
     )
+    # Filtering rows where 'Content Hash' is None
+    error_df = output_df[output_df["Content Hash"].isnull()]
+    error_csv_path = os.path.join(base_dir, "error.csv")
+
+    # Saving the filtered DataFrame to a CSV file named "error.csv"
+    error_df.to_csv(error_csv_path, index=False)
 
     out_path = os.path.join(base_dir, output_file)
 

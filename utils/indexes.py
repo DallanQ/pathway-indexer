@@ -179,3 +179,27 @@ async def get_help_links(url, selector):
         )
 
     return data
+
+async def get_services_links(url):
+    """Get the links from the student services page."""
+    content = requests.get(url, timeout=10).content
+    soup = BeautifulSoup(content, "html.parser")
+    # get the nav with aria-label="Navigation"
+    nav = soup.find("nav", {"aria-label": "Mobile Navigation"})
+    li_elems = nav.find_all("li")
+    # save the links and and content
+    data = []
+    for li in li_elems:
+        links = li.find_all("a")
+        for link in links:
+            # sort by: section, subsection, title, url
+            data.append(
+                [
+                    li.find("span").text,
+                    "",
+                    link.find("span").text.strip(),
+                    url[:-1] + link["href"],
+                ]
+            )
+
+    return data

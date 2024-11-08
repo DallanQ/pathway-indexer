@@ -41,7 +41,8 @@ def parse_files_to_md(
 
 def analyze_file_changes(output_data_path, last_output_data_path, out_folder, last_data_json):
     """
-    Analyze file changes by comparing current and last output data based on Content Hash.
+    Analyze file changes by comparing current and last output data based on Content Hash,
+    only for HTML files. PDF files are always included in files_to_process.
 
     Parameters:
     - output_data_path (str): Path to the current output data CSV file.
@@ -57,27 +58,32 @@ def analyze_file_changes(output_data_path, last_output_data_path, out_folder, la
 
     current_df = pd.read_csv(output_data_path)
 
+    # Separate HTML and PDF files
+    html_df = current_df[current_df["Content Type"] == "html"]
+    pdf_df = current_df[current_df["Content Type"] == "pdf"]
+
     if not os.path.exists(last_output_data_path):
         print("Last output data file not found; processing all files.")
-        return current_df  # Process all files if there's no last output data
+        return current_df  # Process all files if no last output data
 
     last_df = pd.read_csv(last_output_data_path)
-    last_hash_dict = last_df.set_index("URL")["Content Hash"].to_dict()
+    last_hash_dict = last_df[last_df["Content Type"] == "html"].set_index("URL")["Content Hash"].to_dict()
 
+    # Apply hash check only to HTML files
     def has_changes(row):
         last_hash = last_hash_dict.get(row["URL"])
         return row["Content Hash"] != last_hash
 
-    current_df["HasChanged"] = current_df.apply(has_changes, axis=1)
-    files_to_process = current_df[current_df["HasChanged"]]
-    files_to_skip = current_df[~current_df["HasChanged"]]
+    html_df["HasChanged"] = html_df.apply(has_changes, axis=1)
+    changed_html_files = html_df[html_df["HasChanged"]]
+    unchanged_html_files = html_df[~html_df["HasChanged"]]
 
-    # Copy unchanged files and remove them from input directory
-    for _, row in files_to_skip.iterrows():
+    # Copy unchanged HTML files and remove them from input directory
+    for _, row in unchanged_html_files.iterrows():
         print("Skipping unchanged file:", row["Filepath"])
         pathname = os.path.basename(row["Filepath"]).replace(".html", ".md")
-        src_path = os.path.join(last_data_json["last_folder_crawl"], "out", "from_html", pathname)
-        dst_path = os.path.join(out_folder, "from_html", pathname)
+        src_path = os.path.join(last_data_json['last_folder_crawl'], 'out', 'from_html', pathname)
+        dst_path = os.path.join(out_folder, 'from_html', pathname)
 
         os.makedirs(os.path.dirname(dst_path), exist_ok=True)
         # Copy unchanged file as .md in out_folder
@@ -89,6 +95,9 @@ def analyze_file_changes(output_data_path, last_output_data_path, out_folder, la
         if os.path.exists(row["Filepath"]):
             os.remove(row["Filepath"])
             print(f"Removed {row['Filepath']} from input_directory")
+
+    # Combine changed HTML files with all PDF files for processing
+    files_to_process = pd.concat([changed_html_files, pdf_df], ignore_index=True)
 
     return files_to_process
 

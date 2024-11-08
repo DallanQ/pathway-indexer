@@ -230,6 +230,8 @@ def parse_pdf_to_txt(filepath, out_folder):
         out_folder, "from_pdf", os.path.basename(file_path).replace(".pdf", ".txt")
     )  # filepath["path"].replace(".pdf", ".txt")
 
+    os.makedirs(os.path.dirname(file_out), exist_ok=True)
+
     with open(file_out, "w", encoding="utf-8") as f:
         f.write(simple_md)
 

@@ -82,8 +82,8 @@ def analyze_file_changes(output_data_path, last_output_data_path, out_folder, la
     for _, row in unchanged_html_files.iterrows():
         print("Skipping unchanged file:", row["Filepath"])
         pathname = os.path.basename(row["Filepath"]).replace(".html", ".md")
-        src_path = os.path.join(last_data_json['last_folder_crawl'], 'out', 'from_html', pathname)
-        dst_path = os.path.join(out_folder, 'from_html', pathname)
+        src_path = os.path.join(last_data_json["last_folder_crawl"], "out", "from_html", pathname)
+        dst_path = os.path.join(out_folder, "from_html", pathname)
 
         os.makedirs(os.path.dirname(dst_path), exist_ok=True)
         # Copy unchanged file as .md in out_folder

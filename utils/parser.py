@@ -277,7 +277,7 @@ def create_file_extractor(parse_type="pdf"):
 
     if parse_type == ".pdf":
         parser = LlamaParse(
-            api_key=os.environ["LAMA_CLOUD_API_KEY"],
+            api_key=os.environ["LLAMA_CLOUD_API_KEY"],
             result_type="markdown",
             parsing_instruction=(
                 "Convert the provided text into accurate and well-structured Markdown format, closely resembling the original PDF structure. "
@@ -298,7 +298,7 @@ def create_file_extractor(parse_type="pdf"):
         )
     if parse_type == ".html":
         parser = LlamaParse(
-            api_key=os.environ["LAMA_CLOUD_API_KEY"],
+            api_key=os.environ["LLAMA_CLOUD_API_KEY"],
             result_type="markdown",  # "markdown" and "text" are available
             parsing_instruction=(
                 "Convert the provided text into accurate and well-structured Markdown format, strictly preserving the original structure. "

@@ -1,14 +1,15 @@
+import asyncio
+import datetime
+import hashlib
 import os
 import time
-import asyncio
-
-import hashlib
 import zlib
-from playwright.async_api import async_playwright
-import requests
+
 import nest_asyncio
 import pandas as pd
+import requests
 from bs4 import BeautifulSoup
+from playwright.async_api import async_playwright
 
 from utils.tools import create_folder
 
@@ -182,9 +183,7 @@ async def crawl_csv(df, base_dir, output_file="output_data.csv"):
                 else:
                     # Handle other content types by saving with the correct extension
                     file_extension = content_type.split("/")[-1].split(";")[0]
-                    filepath = os.path.join(
-                        crawl_path, "others", f"{filename}.{file_extension}"
-                    )
+                    filepath = os.path.join(crawl_path, "others", f"{filename}.{file_extension}")
                     content = response.content
                     with open(filepath, "wb") as f:
                         f.write(response.content)
@@ -193,38 +192,34 @@ async def crawl_csv(df, base_dir, output_file="output_data.csv"):
                 content_hash = generate_content_hash(content)
 
                 # Append to the output list
-                output_data.append(
-                    [
-                        heading,
-                        sub_heading,
-                        title,
-                        url,
-                        filepath,
-                        content_type.split("/")[1].split(";")[0],
-                        content_hash,
-                    ]
-                )
+                output_data.append([
+                    heading,
+                    sub_heading,
+                    title,
+                    url,
+                    filepath,
+                    content_type.split("/")[1].split(";")[0],
+                    content_hash,
+                    datetime.datetime.now().isoformat(),
+                ])
                 break  # Exit retry loop after successful fetch
 
             except requests.exceptions.HTTPError as http_err:
                 print(response.status_code)
                 if response.status_code == 403:
-                    print(
-                        f"Access forbidden for {url}: {http_err}. Using Playwright to fetch HTML."
-                    )
+                    print(f"Access forbidden for {url}: {http_err}. Using Playwright to fetch HTML.")
                     html_filepath = os.path.join(crawl_path, "html", f"{filename}.html")
                     await fetch_content_with_playwright(url, html_filepath)
-                    output_data.append(
-                        [
-                            heading,
-                            sub_heading,
-                            title,
-                            url,
-                            html_filepath,
-                            "text/html",
-                            None,
-                        ]
-                    )
+                    output_data.append([
+                        heading,
+                        sub_heading,
+                        title,
+                        url,
+                        html_filepath,
+                        "text/html",
+                        None,
+                        datetime.datetime.now().isoformat(),
+                    ])
                     break  # Don't retry if it's a 403 error
                 else:
                     print(f"HTTP error occurred for {url}: {http_err}")
@@ -233,17 +228,16 @@ async def crawl_csv(df, base_dir, output_file="output_data.csv"):
                         print("Retrying in 10 seconds...")
                         time.sleep(10)
                     else:
-                        output_data.append(
-                            [
-                                heading,
-                                sub_heading,
-                                title,
-                                url,
-                                str(http_err),
-                                str(response.status_code),
-                                None,
-                            ]
-                        )
+                        output_data.append([
+                            heading,
+                            sub_heading,
+                            title,
+                            url,
+                            str(http_err),
+                            str(response.status_code),
+                            None,
+                            datetime.datetime.now().isoformat(),
+                        ])
 
             except requests.exceptions.RequestException as err:
                 print(f"Error occurred for {url}: {err}")
@@ -252,9 +246,16 @@ async def crawl_csv(df, base_dir, output_file="output_data.csv"):
                     print("Retrying in 10 seconds...")
                     time.sleep(10)
                 else:
-                    output_data.append(
-                        [heading, sub_heading, title, url, str(err), "Error", None]
-                    )
+                    output_data.append([
+                        heading,
+                        sub_heading,
+                        title,
+                        url,
+                        str(err),
+                        "Error",
+                        None,
+                        datetime.datetime.now().isoformat(),
+                    ])
 
     # Create a list of tasks for asyncio to run
     tasks = [process_row(row) for _, row in df.iterrows()]
@@ -273,6 +274,7 @@ async def crawl_csv(df, base_dir, output_file="output_data.csv"):
             "Filepath",
             "Content Type",
             "Content Hash",
+            "Last Update",
         ],
     )
     # Filtering rows where 'Content Hash' is None
@@ -286,7 +288,17 @@ async def crawl_csv(df, base_dir, output_file="output_data.csv"):
 
     # Append to the existing CSV file or create a new one if it doesn't exist
     if os.path.exists(out_path):
-        output_df.to_csv(out_path, mode="w", header=False, index=False)
+        existing_df = pd.read_csv(out_path)
+        combined_df = pd.concat([existing_df, output_df], ignore_index=True)
+
+        # Delete the 'Last Update' column temporarily to remove duplicates
+        combined_df_no_update = combined_df.drop(columns=["Last Update"])
+        combined_df_no_update = combined_df_no_update.drop_duplicates()
+
+        # Add the 'Last Update' column back
+        combined_df = combined_df_no_update.join(combined_df["Last Update"])
+
+        combined_df.to_csv(out_path, mode="w", index=False)
     else:
         output_df.to_csv(out_path, index=False)
 

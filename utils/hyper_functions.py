@@ -244,69 +244,99 @@ def extract_index_metadata(node):
 def get_headers_and_paragraphs(node: BaseNode) -> list[str]:
     """Get headers and paragraphs from a node."""
 
+    def is_table_row(line):
+        # Check if line is part of a table (has | character and isn't a blockquote)
+        return '|' in line and not line.lstrip().startswith('>')
+
+    def is_table_separator(line):
+        # Check if line is a table header separator (contains only |, -, and spaces)
+        stripped = line.strip()
+        return stripped and all(c in '|-: ' for c in stripped)
+
     # get text from the node
     text = node.get_content(metadata_mode=MetadataMode.NONE)
     results = []
     paragraph_lines = []
     blank_line = False
+    in_table = False
+    table_buffer = []
+
     # split text by newline
     for line in text.split("\n"):
-        line = line.strip()
-        # is this a blank line? if so, add a newline to the paragraph
-        if len(line) == 0:
-            blank_line = True
-        # is this a header? if so, add the previous paragraph to the results and this line to the results
-        elif line.startswith("#"):
-            if len(paragraph_lines) > 0:
-                results.append("\n".join(paragraph_lines))
-                paragraph_lines = []
-            results.append(line)
-            blank_line = False
-        # add list items to the previous paragraph
-        elif re.match(ORDERED_LIST_ITEM_PATTERN, line) or re.match(
-            UNORDERED_LIST_ITEM_PATTERN, line
-        ):
-            if blank_line and len(paragraph_lines) > 0:
-                paragraph_lines.append("")
-            paragraph_lines.append(line)
-            blank_line = False
+        line = line.rstrip()
+        
+        # Table handling
+        if is_table_row(line) or is_table_separator(line):
+            if not in_table:
+                # Start of a new table
+                if paragraph_lines:
+                    results.append("\n".join(paragraph_lines))
+                    paragraph_lines = []
+                in_table = True
+            table_buffer.append(line)
+        elif in_table:
+            # Allow blank lines between table header and rows
+            if line.strip() == "":
+                continue
+            elif not is_table_row(line) and not is_table_separator(line):
+                # End of table when a non-table line appears
+                if table_buffer:
+                    results.append("\n".join(table_buffer))
+                    table_buffer = []
+                in_table = False
+                paragraph_lines.append(line)
+            else:
+                table_buffer.append(line)
         else:
-            # if this is a new paragraph, add the previous paragraph to the results
-            if blank_line and len(paragraph_lines) > 0:
-                results.append("\n".join(paragraph_lines))
-                paragraph_lines = []
-            paragraph_lines.append(line)
-            blank_line = False
-    if len(paragraph_lines) > 0:
+            # Regular text handling (existing logic)
+            if len(line) == 0:
+                blank_line = True
+            elif line.startswith("#"):
+                if paragraph_lines:
+                    results.append("\n".join(paragraph_lines))
+                    paragraph_lines = []
+                results.append(line)
+                blank_line = False
+            elif re.match(ORDERED_LIST_ITEM_PATTERN, line) or re.match(
+                UNORDERED_LIST_ITEM_PATTERN, line
+            ):
+                if blank_line and paragraph_lines:
+                    paragraph_lines.append("")
+                paragraph_lines.append(line)
+                blank_line = False
+            else:
+                if blank_line and paragraph_lines:
+                    results.append("\n".join(paragraph_lines))
+                    paragraph_lines = []
+                paragraph_lines.append(line)
+                blank_line = False
+
+    # Add remaining table or paragraph
+    if table_buffer:
+        results.append("\n".join(table_buffer))
+    if paragraph_lines:
         results.append("\n".join(paragraph_lines))
 
-    # clean up the results
-    # remove leading/trailing whitespace from each result
-    results = [result.strip() for result in results]
-    # if a level 1 header has a single paragraph underneath it that's <= 5 words long and is followed by another level 1 header
-    # or if a level 1 header has no paragraph underneath it,
-    # it's probably not a header so we should convert it to a paragraph
+    # Clean up results
+    results = [result.strip() for result in results if result.strip()]
+
+    # Handle orphan headers or short paragraphs
     for i in range(len(results) - 2):
         if results[i].startswith("# ") and (
             (len(results[i + 1].split()) <= 5 and results[i + 2].startswith("# "))
             or results[i + 1].startswith("# ")
         ):
             results[i] = results[i].lstrip("# ")
-    # if two consecutive paragraphs are identical, remove the first one
+
+    # Remove duplicates or join short paragraphs
     for i in range(len(results) - 1):
         if results[i] == results[i + 1]:
             results[i] = ""
-    # join paragraphs that have <= 5 words with the previous paragraph
-    for i in range(1, len(results)):
-        if (
-            not results[i].startswith("#")
-            and not results[i - 1].startswith("#")
-            and len(results[i].split()) <= 5
-        ):
+        elif not results[i].startswith("#") and len(results[i].split()) <= 5:
             results[i] = f"{results[i-1]}\n{results[i]}"
             results[i - 1] = ""
-    # only keep non-empty results
     return [result for result in results if result]
+
 
 
 def update_headers(par: str, headers: dict) -> None:

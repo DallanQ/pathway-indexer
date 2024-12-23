@@ -27,6 +27,7 @@ def clean(text: Any) -> str:
 
 class Selectors:
     """Selector for a soup object"""
+
     def __init__(self, header, sub_header, link, text):
         self.header = header
         self.sub_header = sub_header
@@ -48,7 +49,7 @@ def get_data(soup: BeautifulSoup, selectors: Selectors) -> list:
     text = selectors.text
     # get the elements inside the div div.WordSection1, independent of the tag
     elems = soup.select("div.WordSection1 > *")
-    #elems = soup.select("p.MsoNormal")
+    # elems = soup.select("p.MsoNormal")
 
     for elem in elems:
         # in this if, vaidate if the element is a header
@@ -68,7 +69,11 @@ def get_data(soup: BeautifulSoup, selectors: Selectors) -> list:
         elif elem.select(link):
             if len(elem.select(link)) > 0:
                 link_text = elem.select(link)[0].get_attribute_list("href")[0]
-                text_text = elem.select(text)[0].text if len(elem.select(text)) else elem.select(link)[0].text
+                text_text = (
+                    elem.select(text)[0].text
+                    if len(elem.select(text))
+                    else elem.select(link)[0].text
+                )
 
                 # save the row
                 rows.append(
@@ -85,6 +90,7 @@ def crawl_index(url, selectors: Selectors):
     soup = BeautifulSoup(response.content, features=parser)
     data = get_data(soup, selectors)
     return data
+
 
 def create_root_folders(root):
     """Create the initial folders for the project."""
@@ -106,12 +112,14 @@ def create_root_folders(root):
     create_folder(out_folder, "from_others")
     create_folder(out_folder, "error")
 
+
 def get_soup_content(url):
     """Get the soup object from the url."""
     parser = "html.parser"
     response = requests.get(url, timeout=10)
     soup = BeautifulSoup(response.content, features=parser)
     return soup
+
 
 def get_handbook_data(soup, selector):
     """covert the soup object to a list of lists."""
@@ -144,41 +152,61 @@ def get_handbook_data(soup, selector):
 
     return data
 
+
 async def get_help_links(url, selector):
     """Get the links from the help page."""
     playwright = await async_playwright().start()
     browser = await playwright.chromium.launch(headless=True)
     page = await browser.new_page()
 
-    await page.goto(url)
-    await page.wait_for_load_state()
+    try:
+        await page.goto(url)
+        await page.wait_for_load_state()
 
-    while True:
-        try:
-            await page.click("text=Show More...")
-            page.query_selector("#pagingButton")
-        except:
-            break
+        # Click "Show More..." until all articles are loaded
+        while True:
+            try:
+                await page.click("text=Show More...", timeout=3000)
+            except Exception as e:
+                print(f"Stopped clicking 'Show More...': {e}")
+                break
 
-    # get the element with id articleList
-    articles = await page.query_selector(selector)
-    # get all the links inside it, the link is the a tag, the title in the h5 tag inside the a tag and the descripcion in the p tag inside the a tag
-    links = await articles.query_selector_all("a")
-    data = []
-    for link in links:
-        title = await link.query_selector("h5")
-        description = await link.query_selector("p")
-        # the order is: header, subheader, title, url
-        data.append(
-            [
-                await title.inner_text(),
-                await description.inner_text(),
-                await title.inner_text(),
-                url + await link.get_attribute("href"),
-            ]
-        )
+        # Get the element with the specified selector
+        articles = await page.query_selector(selector)
+        if not articles:
+            raise ValueError(f"No element found for selector: {selector}")
 
-    return data
+        # Get all the <a> tags inside the selected element
+        links = await articles.query_selector_all("a")
+        if not links:
+            raise ValueError("No links found inside the selected element.")
+
+        data = []
+        for link in links:
+            # Get the title (first <p> tag)
+            title = await link.query_selector("p.title")
+            # Get the description (second <p> tag)
+            description = await link.query_selector("p:not(.title)")
+
+            # Validate that title and description exist
+            if not title or not description:
+                print("Skipping a link with missing title or description.")
+                continue
+
+            # Append the data
+            data.append(
+                [
+                    await title.inner_text(),
+                    await description.inner_text(),
+                    await title.inner_text(),
+                    url + (await link.get_attribute("href")),
+                ]
+            )
+
+        return data
+    finally:
+        await browser.close()
+
 
 async def get_services_links(url):
     """Get the links from the student services page."""

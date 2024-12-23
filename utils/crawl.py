@@ -61,8 +61,9 @@ async def fetch_content_with_playwright(url, filepath):
             f.write(content)
         await browser.close()
 
+
 async def fetch_content_from_student_services(urls):
-    """ Fetch content from student services page with tabs"""
+    """Fetch content from student services page with tabs"""
     plw = await async_playwright().start()
     brwsr = await plw.chromium.launch()
     pg = await brwsr.new_page()
@@ -78,9 +79,9 @@ async def fetch_content_from_student_services(urls):
 
         h1 = soup.new_tag("h1")
         h1.string = url["title"]
-        art = art.replace(">", f">{h1}",1)
+        art = art.replace(">", f">{h1}", 1)
         content += art
-    
+
     await brwsr.close()
     return content
 
@@ -108,8 +109,11 @@ async def crawl_csv(df, base_dir, output_file="output_data.csv"):
         title = row[3]
         filename = row[4]
 
-        #! CURRENT EXCEPCION, IGNORE LINKS FROM sharepoint.com
-        if "sharepoint.com" in url:
+        if (
+            "sharepoint.com" in url
+            or url
+            == "https://www.byupathway.edu/pathwayconnect-block-academic-calendar"
+        ):
             return
 
         # Edit the title to become filename
@@ -139,7 +143,13 @@ async def crawl_csv(df, base_dir, output_file="output_data.csv"):
                     with open(filepath, "w", encoding="utf-8") as f:
                         f.write(content)
                     content = content.encode("utf-8")
-                elif any(domain in url for domain in ["articulate.com", "myinstitute.churchofjesuschrist.org"]):
+                elif any(
+                    domain in url
+                    for domain in [
+                        "articulate.com",
+                        "myinstitute.churchofjesuschrist.org",
+                    ]
+                ):
                     # raise HTTPError
                     response.status_code = 403
 
@@ -163,11 +173,17 @@ async def crawl_csv(df, base_dir, output_file="output_data.csv"):
                         if tablist:
                             tab_links = tablist.find_all("a")
                             # get only the links
-                            tab_links = [{
-                                "title": link.text.strip(),
-                                "url": url+ "#" + link.get("href").split("#")[1]
-                            } for link in tab_links if "#" in link.get("href")]
-                            tab_content = await fetch_content_from_student_services(tab_links)
+                            tab_links = [
+                                {
+                                    "title": link.text.strip(),
+                                    "url": url + "#" + link.get("href").split("#")[1],
+                                }
+                                for link in tab_links
+                                if "#" in link.get("href")
+                            ]
+                            tab_content = await fetch_content_from_student_services(
+                                tab_links
+                            )
                             content += tab_content
                         text_content = content
                         content = content.encode("utf-8")
@@ -183,7 +199,9 @@ async def crawl_csv(df, base_dir, output_file="output_data.csv"):
                 else:
                     # Handle other content types by saving with the correct extension
                     file_extension = content_type.split("/")[-1].split(";")[0]
-                    filepath = os.path.join(crawl_path, "others", f"{filename}.{file_extension}")
+                    filepath = os.path.join(
+                        crawl_path, "others", f"{filename}.{file_extension}"
+                    )
                     content = response.content
                     with open(filepath, "wb") as f:
                         f.write(response.content)
@@ -192,34 +210,40 @@ async def crawl_csv(df, base_dir, output_file="output_data.csv"):
                 content_hash = generate_content_hash(content)
 
                 # Append to the output list
-                output_data.append([
-                    heading,
-                    sub_heading,
-                    title,
-                    url,
-                    filepath,
-                    content_type.split("/")[1].split(";")[0],
-                    content_hash,
-                    datetime.datetime.now().isoformat(),
-                ])
+                output_data.append(
+                    [
+                        heading,
+                        sub_heading,
+                        title,
+                        url,
+                        filepath,
+                        content_type.split("/")[1].split(";")[0],
+                        content_hash,
+                        datetime.datetime.now().isoformat(),
+                    ]
+                )
                 break  # Exit retry loop after successful fetch
 
             except requests.exceptions.HTTPError as http_err:
                 print(response.status_code)
                 if response.status_code == 403:
-                    print(f"Access forbidden for {url}: {http_err}. Using Playwright to fetch HTML.")
+                    print(
+                        f"Access forbidden for {url}: {http_err}. Using Playwright to fetch HTML."
+                    )
                     html_filepath = os.path.join(crawl_path, "html", f"{filename}.html")
                     await fetch_content_with_playwright(url, html_filepath)
-                    output_data.append([
-                        heading,
-                        sub_heading,
-                        title,
-                        url,
-                        html_filepath,
-                        "text/html",
-                        None,
-                        datetime.datetime.now().isoformat(),
-                    ])
+                    output_data.append(
+                        [
+                            heading,
+                            sub_heading,
+                            title,
+                            url,
+                            html_filepath,
+                            "text/html",
+                            None,
+                            datetime.datetime.now().isoformat(),
+                        ]
+                    )
                     break  # Don't retry if it's a 403 error
                 else:
                     print(f"HTTP error occurred for {url}: {http_err}")
@@ -228,16 +252,18 @@ async def crawl_csv(df, base_dir, output_file="output_data.csv"):
                         print("Retrying in 10 seconds...")
                         time.sleep(10)
                     else:
-                        output_data.append([
-                            heading,
-                            sub_heading,
-                            title,
-                            url,
-                            str(http_err),
-                            str(response.status_code),
-                            None,
-                            datetime.datetime.now().isoformat(),
-                        ])
+                        output_data.append(
+                            [
+                                heading,
+                                sub_heading,
+                                title,
+                                url,
+                                str(http_err),
+                                str(response.status_code),
+                                None,
+                                datetime.datetime.now().isoformat(),
+                            ]
+                        )
 
             except requests.exceptions.RequestException as err:
                 print(f"Error occurred for {url}: {err}")
@@ -246,16 +272,18 @@ async def crawl_csv(df, base_dir, output_file="output_data.csv"):
                     print("Retrying in 10 seconds...")
                     time.sleep(10)
                 else:
-                    output_data.append([
-                        heading,
-                        sub_heading,
-                        title,
-                        url,
-                        str(err),
-                        "Error",
-                        None,
-                        datetime.datetime.now().isoformat(),
-                    ])
+                    output_data.append(
+                        [
+                            heading,
+                            sub_heading,
+                            title,
+                            url,
+                            str(err),
+                            "Error",
+                            None,
+                            datetime.datetime.now().isoformat(),
+                        ]
+                    )
 
     # Create a list of tasks for asyncio to run
     tasks = [process_row(row) for _, row in df.iterrows()]

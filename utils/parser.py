@@ -319,6 +319,13 @@ def create_file_extractor(parse_type="pdf"):
     file_extractor = {".txt": parser}
     return file_extractor
 
+def has_markdown_tables(content):
+    """Check if content contains markdown tables"""
+    table_patterns = [
+        r'\|.*\|.*\|',          # Table row with cells
+        r'\|[\s-]*\|[\s-]*\|'   # Table header separator
+    ]
+    return all(re.search(pattern, content, re.MULTILINE) for pattern in table_patterns)
 
 def parse_txt_to_md(file_path, file_extension, title_tag=""):
     """
@@ -326,9 +333,17 @@ def parse_txt_to_md(file_path, file_extension, title_tag=""):
     """
     # get the file extension
 
-    documents = SimpleDirectoryReader(
-        input_files=[file_path], file_extractor=create_file_extractor(file_extension)
-    ).load_data()
+    with open(file_path, encoding="utf-8") as f:
+        content = f.read()
+
+        
+    if not has_markdown_tables(content):
+        documents = SimpleDirectoryReader(
+            input_files=[file_path], file_extractor=create_file_extractor(file_extension)
+        ).load_data()
+    else:
+        # save the content to a list of documents
+        documents = SimpleDirectoryReader(input_files=[file_path]).load_data()
 
     # size = sum([len(doc.text) for doc in documents])
     # validate if the content is empty

@@ -4,6 +4,7 @@ from typing import Any, cast
 import requests
 from bs4 import BeautifulSoup, Tag
 from playwright.async_api import async_playwright
+import time
 
 from utils.tools import create_folder
 
@@ -156,21 +157,14 @@ def get_handbook_data(soup, selector):
 async def get_help_links(url, selector):
     """Get the links from the help page."""
     playwright = await async_playwright().start()
-    browser = await playwright.chromium.launch(headless=True)
+    browser = await playwright.chromium.launch()
     page = await browser.new_page()
 
     try:
         await page.goto(url)
         await page.wait_for_load_state()
 
-        # Click "Show More..." until all articles are loaded
-        while True:
-            try:
-                await page.click("text=Show More...", timeout=3000)
-            except Exception as e:
-                print(f"Stopped clicking 'Show More...': {e}")
-                break
-
+        time.sleep(2)
         # Get the element with the specified selector
         articles = await page.query_selector(selector)
         if not articles:
@@ -178,6 +172,25 @@ async def get_help_links(url, selector):
 
         # Get all the <a> tags inside the selected element
         links = await articles.query_selector_all("a")
+        if not links:
+            raise ValueError("No links found inside the selected element.")
+
+        # Click "Show More..." until all articles are loaded
+        while True:
+            try:
+                print("Doing Click...")
+                await page.click("button.search-more", timeout=3000)
+                time.sleep(2)
+                # si no aumentó el número de artículos, salir del loop
+                new_links_count = await articles.query_selector_all("a")
+                if len(links) == len(new_links_count):
+                    break
+                links = new_links_count
+            except Exception as e:
+                print(f"Stopped clicking 'Show More...': {e}")
+                break
+
+
         if not links:
             raise ValueError("No links found inside the selected element.")
 
@@ -206,6 +219,7 @@ async def get_help_links(url, selector):
         return data
     finally:
         await browser.close()
+        await playwright.stop()
 
 
 async def get_services_links(url):

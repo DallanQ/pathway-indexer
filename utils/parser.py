@@ -262,12 +262,13 @@ def convert_html_to_markdown(file_path, out_folder):
     os.makedirs(os.path.dirname(file_out), exist_ok=True)
 
     if is_empty_content(markdown_content):
-        return "Error"
+        return file_path, "Error parsing."
 
     with open(file_out, "w", encoding="utf-8") as f:
         f.write(markdown_content)
 
     print(f"Converted HTML to TXT and saved to: {file_out}")
+
 
     return file_out, title_tag
 
@@ -523,20 +524,21 @@ def process_file(file_path, out_folder):
         # Handle HTML file
         for _ in range(3):
             txt_file_path, title_tag = convert_html_to_markdown(file_path, out_folder)
-            if txt_file_path != "Error":
+            if title_tag != "Error parsing.":
                 break
             print("Error converting HTML file. Retrying...")
             time.sleep(4)
 
-    # try a maximum of 3 times to parse the txt file to md
-    for _ in range(3):
-        is_empty = parse_txt_to_md(txt_file_path, file_extension, title_tag)
-        if not is_empty:
-            # remove the txt file
-            os.remove(txt_file_path)
-            return
-        print("Error parsing TXT file to MD. Retrying...")
-        time.sleep(4)
+    if title_tag != "Error parsing.":
+        # try a maximum of 3 times to parse the txt file to md
+        for _ in range(3):
+            is_empty = parse_txt_to_md(txt_file_path, file_extension, title_tag)
+            if not is_empty:
+                # remove the txt file
+                os.remove(txt_file_path)
+                return
+            print("Error parsing TXT file to MD. Retrying...")
+            time.sleep(4)
 
     # move the txt file to the error folder
     error_folder = os.path.join(out_folder, "error")
@@ -549,6 +551,8 @@ def process_directory(origin_path, out_folder):
     Processes all HTML and PDF files in the specified directory.
     """
     for root, _dirs, files in os.walk(origin_path):
+        if "error" in root:
+            continue
         for file in files:
             if file.lower().endswith((".html", ".pdf")):
                 file_path = os.path.join(root, file)
@@ -560,8 +564,11 @@ def add_titles_tag(input_directory, out_folder):
     all_files = get_files(input_directory)
     # save only html files
     html_files = [file for file in all_files if file.endswith(".html")]
+    # ignore the error folder
+    html_files = [file for file in html_files if "error" not in file]
     out_files = get_files(out_folder)
 
+    print(f"=== input directory: {input_directory}===")
     # Load a soup object from each html, get the title, and add it to the first line of the markdown file
     for file_path in html_files:
         with open(file_path, encoding="utf-8") as file:

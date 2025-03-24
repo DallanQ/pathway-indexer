@@ -9,7 +9,7 @@ from utils.indexes import (
     crawl_index,
     create_root_folders,
     get_help_links,
-    get_services_links
+    get_services_links,
 )
 from utils.tools import generate_hash_filename
 import asyncio
@@ -54,11 +54,11 @@ def get_indexes():
 
     HELP_SELECTOR = "#articleList"
 
-    # Crawling Process
-    acm_data = crawl_index(ACM_URL, acm_selectors)
-    print("Acm data collected!")
-    print(f"Lenght of acm data: {len(acm_data)}")
-    print()
+    # # Crawling Process
+    # acm_data = crawl_index(ACM_URL, acm_selectors)
+    # print("Acm data collected!")
+    # print(f"Lenght of acm data: {len(acm_data)}")
+    # print()
 
     missionary_data = crawl_index(MISSIONARY_URL, missionary_selectors)
     print("Missionary data collected!")
@@ -79,7 +79,7 @@ def get_indexes():
     with open(acm_path, "w", newline="", encoding="UTF-8") as csvfile:
         writer = csv.writer(csvfile)
         writer.writerow(["Section", "Subsection", "Title", "URL"])
-        writer.writerows(acm_data)
+        # writer.writerows(acm_data)
 
     with open(missionary_path, "w", newline="", encoding="UTF-8") as csvfile:
         writer = csv.writer(csvfile)
@@ -102,12 +102,12 @@ def get_indexes():
     index_path = os.path.join(DATA_PATH, "index")
 
     # Load the data into Dataframes
-    df = pd.read_csv(f"{index_path}/acm.csv")
+    # df = pd.read_csv(f"{index_path}/acm.csv")
     df2 = pd.read_csv(f"{index_path}/missionary.csv")
     df3 = pd.read_csv(f"{index_path}/help.csv")
     df4 = pd.read_csv(f"{index_path}/student_services.csv")
 
-    df = pd.concat([df, df2, df3, df4], ignore_index=True)
+    df = pd.concat([df2, df3, df4], ignore_index=True)  # df removed
 
     df.fillna("Missing", inplace=True)
 
@@ -116,11 +116,13 @@ def get_indexes():
 
     df_merged = (
         df.groupby("URL")
-        .agg({
-            "Section": list,
-            "Subsection": list,
-            "Title": list,
-        })
+        .agg(
+            {
+                "Section": list,
+                "Subsection": list,
+                "Title": list,
+            }
+        )
         .reset_index()
     )
 

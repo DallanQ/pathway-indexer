@@ -4,7 +4,11 @@ from dotenv import load_dotenv
 
 from pathway_indexer.crawler import crawl_data
 from pathway_indexer.get_indexes import get_indexes
-from pathway_indexer.memory import copy_output_csv, initialize_json_file, update_crawl_timestamp
+from pathway_indexer.memory import (
+    copy_output_csv,
+    initialize_json_file,
+    update_crawl_timestamp,
+)
 from pathway_indexer.parser import parse_files_to_md
 
 load_dotenv()
@@ -24,16 +28,16 @@ def main():
     print("Crawler Started...\n")
     crawl_data()
 
-    print("Starting parser...\n")
+    print("===>Starting parser...\n")
     parse_files_to_md(last_data_json=last_data_json)
 
-    print("Updating crawl timestamp...\n")
+    print("===>Updating crawl timestamp...\n")
     update_crawl_timestamp(detail_json_path, DATA_PATH)
 
-    print("Copying output CSV...\n")
+    print("===>Copying output CSV...\n")
     copy_output_csv(DATA_PATH, output_data_path)
 
-    print("Process completed")
+    print("===>Process completed")
 
 
 if __name__ == "__main__":

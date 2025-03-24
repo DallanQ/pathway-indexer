@@ -168,7 +168,10 @@ async def crawl_csv(df, base_dir, output_file="output_data.csv"):
                     elif "student-services.catalog.prod.coursedog.com" in url:
                         content = response.text
                         soup = BeautifulSoup(content, "html.parser")
-                        content = soup.find("article", class_="main-content").prettify()
+                        try:
+                            content = soup.find("article", class_="main-content").prettify()
+                        except:
+                            print("Error with ", url)
                         tablist = soup.find("div", {"role": "tablist"})
                         if tablist:
                             tab_links = tablist.find_all("a")

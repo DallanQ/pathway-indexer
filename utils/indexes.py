@@ -166,12 +166,14 @@ async def get_help_links(url, selector):
 
         time.sleep(2)
         # Get the element with the specified selector
-        articles = await page.query_selector(selector)
-        if not articles:
+        desktop_articles = await page.query_selector("#desktopArticles")
+
+        if not desktop_articles:
             raise ValueError(f"No element found for selector: {selector}")
 
         # Get all the <a> tags inside the selected element
-        links = await articles.query_selector_all("a")
+        links = await desktop_articles.query_selector_all("a")
+
         if not links:
             raise ValueError("No links found inside the selected element.")
 
@@ -179,17 +181,20 @@ async def get_help_links(url, selector):
         while True:
             try:
                 print("Doing Click...")
-                await page.click("button.search-more", timeout=3000)
+                await page.click(
+                    "#desktopArticles button.show-more-button", timeout=3000
+                )
                 time.sleep(2)
                 # si no aumentó el número de artículos, salir del loop
-                new_links_count = await articles.query_selector_all("a")
+                new_links_count = await desktop_articles.query_selector_all(
+                    "a"
+                ) or await desktop_articles.query_selector_all("a")
                 if len(links) == len(new_links_count):
                     break
                 links = new_links_count
             except Exception as e:
                 print(f"Stopped clicking 'Show More...': {e}")
                 break
-
 
         if not links:
             raise ValueError("No links found inside the selected element.")

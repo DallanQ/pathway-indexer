@@ -52,5 +52,7 @@ Finally, if you push something by accident and want to delete it, you need to ss
 
 ## Run Crawler
 
-`poetry shell`
-`python main.py`
+```bash
+poetry shell
+python main.py
+```

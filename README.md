@@ -50,9 +50,18 @@ Because of this, it's generally a good idea to add date-stamps to your filenames
 
 Finally, if you push something by accident and want to delete it, you need to ssh into the 35.90.214.49 box and cd to /interns/pathway to delete it from the shared directory.
 
-## Run Crawler
+## Weekly: Load new data
+
+create a new directory in the data folder (with today's date)
+add that directory to the .env file (DATA_PATH)
+
+### Run Crawler
 
 ```bash
 poetry shell
 python main.py
 ```
+
+### Load the data into the index
+
+???

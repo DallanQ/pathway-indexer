@@ -50,13 +50,7 @@ Because of this, it's generally a good idea to add date-stamps to your filenames
 
 Finally, if you push something by accident and want to delete it, you need to ssh into the 35.90.214.49 box and cd to /interns/pathway to delete it from the shared directory.
 
-## Ready
+## Run Crawler
 
-You are now ready to start development on your project!
-
-For activating the automatic documentation with MkDocs, see [here](https://fpgmaas.github.io/cookiecutter-poetry/features/mkdocs/#enabling-the-documentation-on-github).
-To enable the code coverage reports, see [here](https://fpgmaas.github.io/cookiecutter-poetry/features/codecov/).
-
----
-
-Repository initiated with [fpgmaas/cookiecutter-poetry](https://github.com/fpgmaas/cookiecutter-poetry).
+`poetry shell`
+`python main.py`

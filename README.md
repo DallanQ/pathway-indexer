@@ -13,17 +13,7 @@ Create and maintain the index for the BYU Pathway service missionary chatbot
 
 ## Getting started with your project
 
-First, create a repository on GitHub with the same name as this project, and then run the following commands:
-
-```bash
-git init -b main
-git add .
-git commit -m "init commit"
-git remote add origin git@github.com:DallanQ/pathway-indexer.git
-git push -u origin main
-```
-
-Finally, install the environment and the pre-commit hooks with
+First, install the environment and the pre-commit hooks with
 
 ```bash
 make install
@@ -43,7 +33,7 @@ Host 35.90.214.49
   IdentityFile ~/.ssh/interns.pem
 ```
 4. `ssh 35.90.214.49` to make sure you can get into the machine with the shared data directory. If asked a yes/no question about signing in, answer Yes.
-5. `make pull-data` to pull data from the shared data directory into your local `data` directory.
+5. `make pull-data` to pull data from the shared data directory into your local `data` directory (omit this step for now).
 
 #### Usage
 

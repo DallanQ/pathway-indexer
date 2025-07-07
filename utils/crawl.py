@@ -135,7 +135,7 @@ async def crawl_csv(df, base_dir, output_file="output_data.csv"):
                 time.sleep(3)
                 response = requests.get(url, timeout=10)
                 response.raise_for_status()  # http errors
-                content_type = response.headers.get("content-type")
+                content_type = response.headers.get("content-type", "")
 
                 if any(domain in url for domain in ["faq.whatsapp"]):
                     content = await get_whatsapp_content(url)
@@ -275,6 +275,7 @@ async def crawl_csv(df, base_dir, output_file="output_data.csv"):
                     print("Retrying in 10 seconds...")
                     time.sleep(10)
                 else:
+                    print(f"No content-type header found for {url}: {err}")
                     output_data.append(
                         [
                             heading,

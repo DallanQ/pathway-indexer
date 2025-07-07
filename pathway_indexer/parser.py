@@ -129,7 +129,7 @@ def process_modified_files(
         return
 
     print("Starting file processing for modified files...")
-    process_directory(input_directory, out_folder)
+    process_directory(input_directory, out_folder) # convert the files to md
     print("File processing for modified files completed.")
 
     add_titles_tag(input_directory, out_folder)

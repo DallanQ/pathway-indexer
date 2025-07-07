@@ -402,8 +402,8 @@ def associate_markdown_with_metadata(data_path, markdown_dirs, csv_file, exclude
 
     # Now go through the markdown files in each directory and associate them with the metadata
     markdown_metadata_mapping = {}
-
-    # Loop through each directory provided
+    # List to save files without metadata
+    no_metadata = []
 
     for markdown_path in all_files:
         # Get the markdown filename without the extension
@@ -447,9 +447,17 @@ def associate_markdown_with_metadata(data_path, markdown_dirs, csv_file, exclude
 
         else:
             print(f"No metadata found for {markdown_path}. Skipping.")
+            no_metadata.append(markdown_path)
 
-    # Debugging: Print the mapping
-    print("Markdown files and their metadata:")
+    # Guardamos en CSV las rutas de Markdown sin metadata
+    no_metadata_csv_path = os.path.join(data_path, "no_metadata.csv")
+    with open(no_metadata_csv_path, mode="w", newline="", encoding="utf-8") as nm_file:
+        writer = csv.writer(nm_file)
+        writer.writerow(["markdown_path"])
+        for nm_path in no_metadata:
+            writer.writerow([nm_path])
+
+    print("\nMarkdown files and their metadata:")
     for path, meta in markdown_metadata_mapping.items():
         print(f"{path}: {meta}")
 

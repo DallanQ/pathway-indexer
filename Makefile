@@ -5,11 +5,13 @@ install: ## Install the poetry environment and pre-commit hooks
 	@poetry run pre-commit install
 	@echo "✅ Poetry environment and hooks are set up."
 
+# Use this if `poetry shell` fails (e.g., on some Linux dev machines with Poetry ≥2.0)
+# It's a workaround to activate the virtual environment manually.
 .PHONY: activate
 activate: ## Activate the Poetry virtual environment (requires Poetry >=2.0.0)
-	@echo "🌀 Activating poetry environment..."
-	@poetry env info --path | xargs -I {} echo "Run: source {}/bin/activate"
-	@echo "Note: You must manually run the command above in your shell to activate the environment."
+	# Poetry 2.x no longer includes `poetry shell` by default, so you can use this instead.
+	@echo "🌀 To activate the environment, run:"
+	@echo "source $(poetry env info --path)/bin/activate"
 
 .PHONY: check
 check: ## Run code quality tools

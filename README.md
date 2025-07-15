@@ -33,6 +33,9 @@ poetry run python main.py
 
 # Or manually activate the environment (optional for interactive use):
 source $(poetry env info --path)/bin/activate
+
+# Or run
+make activate
 ```
 
 ---

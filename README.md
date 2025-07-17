@@ -32,7 +32,7 @@ Note: If using Poetry 2.x, the `poetry shell` command is not included by default
 poetry run python main.py
 
 # Or manually activate the environment (optional for interactive use):
-source $(poetry env info --path)/bin/activate
+source .venv/bin/activate
 
 # Or run
 make activate

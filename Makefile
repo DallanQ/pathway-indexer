@@ -1,12 +1,20 @@
 .PHONY: install
-install: ## Install the poetry environment and install the pre-commit hooks
+install: ## Install the poetry environment and pre-commit hooks
 	@echo "🚀 Creating virtual environment using pyenv and poetry"
 	@poetry install
-	@ poetry run pre-commit install
-	@poetry shell
+	@poetry run pre-commit install
+	@echo "✅ Poetry environment and hooks are set up."
+
+# Use this if `poetry shell` fails (e.g., on some Linux dev machines with Poetry ≥2.0)
+# It's a workaround to activate the virtual environment manually.
+.PHONY: activate
+activate:
+	# Poetry 2.x no longer includes `poetry shell` by default, so you can use this instead.
+	@echo "🌀 To activate the environment, run:"
+	@echo "source .venv/bin/activate"
 
 .PHONY: check
-check: ## Run code quality tools.
+check: ## Run code quality tools
 	@echo "🚀 Checking Poetry lock file consistency with 'pyproject.toml': Running poetry check --lock"
 	@poetry check --lock
 	@echo "🚀 Linting code: Running pre-commit"
@@ -35,7 +43,7 @@ build: clean-build ## Build wheel file using poetry
 	@poetry build
 
 .PHONY: clean-build
-clean-build: ## clean build artifacts
+clean-build: ## Clean build artifacts
 	@rm -rf dist
 
 .PHONY: help

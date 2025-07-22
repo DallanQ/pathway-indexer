@@ -289,11 +289,12 @@ async def crawl_csv(df, base_dir, output_file="output_data.csv"):
                         ]
                     )
 
-    # Create a list of tasks for asyncio to run
-    tasks = [process_row(row) for _, row in df.iterrows()]
-
-    # Run the tasks asynchronously
-    await asyncio.gather(*tasks)
+    # Process rows in batches of 10 to manage memory usage efficiently
+    batch_size = 10
+    for i in range(0, len(df), batch_size):
+        batch = df.iloc[i:i + batch_size]  # Get next batch of rows
+        tasks = [process_row(row) for _, row in batch.iterrows()]  # Create tasks for batch
+        await asyncio.gather(*tasks)  # Process batch before continuing
 
     # Create a DataFrame from the output data
     output_df = pd.DataFrame(

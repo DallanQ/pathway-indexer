@@ -1,3 +1,4 @@
+import asyncio
 import csv
 import os
 
@@ -12,13 +13,12 @@ from utils.indexes import (
     get_services_links,
 )
 from utils.tools import generate_hash_filename
-import asyncio
 
 dotenv.load_dotenv()
 
 
 def get_indexes():
-    """Get the indexes from the websites."""
+    """Get the indexes from the websites and tag them with a role."""
     # first, create the necessary folders
     DATA_PATH = os.getenv("DATA_PATH")
     print(DATA_PATH)
@@ -43,8 +43,6 @@ def get_indexes():
         link="a",
         text="a > span",
     )
-
-    #! THERE WAS CHANGES IN THE MISSIONARY SELECTORS
     missionary_selectors = Selectors(
         header="h1",
         sub_header="h2",
@@ -54,60 +52,71 @@ def get_indexes():
 
     HELP_SELECTOR = "#articleList"
 
-    # # Crawling Process
-    # acm_data = crawl_index(ACM_URL, acm_selectors)
-    # print("Acm data collected!")
-    # print(f"Lenght of acm data: {len(acm_data)}")
-    # print()
+    # --- Crawling Process ---
 
+    # 1. Crawl ACM data
+    acm_data = crawl_index(ACM_URL, acm_selectors)
+    print("ACM data collected!")
+    print(f"Length of ACM data: {len(acm_data)}")
+    acm_data_with_role = [[*row, "ACM"] for row in acm_data]
+    print()
+
+    # 2. Crawl Missionary data
     missionary_data = crawl_index(MISSIONARY_URL, missionary_selectors)
     print("Missionary data collected!")
-    print(f"Lenght of missionary data: {len(missionary_data)}")
+    print(f"Length of missionary data: {len(missionary_data)}")
+    missionary_data_with_role = [[*row, "missionary"] for row in missionary_data[2:]]
     print()
 
+    # 3. Crawl Help data
     help_data = asyncio.run(get_help_links(HELP_URL, HELP_SELECTOR))
     print("Help data collected!")
-    print(f"Lenght of help data: {len(help_data)}")
+    print(f"Length of help data: {len(help_data)}")
+    help_data_with_role = [[*row, "missionary"] for row in help_data]
     print()
 
+    # 4. Crawl Student Services data
     student_services_data = asyncio.run(get_services_links(STUDENT_SERVICES_URL))
     print("Student Services data collected!")
-    print(f"Lenght of Student Services data: {len(student_services_data)}")
+    print(f"Length of Student Services data: {len(student_services_data)}")
+    student_services_data_with_role = [[*row, "missionary"] for row in student_services_data]
     print()
 
-    # Save the data
+    # --- Save the data ---
+    csv_headers = ["Section", "Subsection", "Title", "URL", "Role"]
+
     with open(acm_path, "w", newline="", encoding="UTF-8") as csvfile:
         writer = csv.writer(csvfile)
-        writer.writerow(["Section", "Subsection", "Title", "URL"])
-        # writer.writerows(acm_data)
+        writer.writerow(csv_headers)
+        writer.writerows(acm_data_with_role)
 
     with open(missionary_path, "w", newline="", encoding="UTF-8") as csvfile:
         writer = csv.writer(csvfile)
-        # write headers
-        writer.writerow(["Section", "Subsection", "Title", "URL"])
-        writer.writerows(missionary_data[2:])
+        writer.writerow(csv_headers)
+        writer.writerows(missionary_data_with_role)
 
     with open(help_path, "w", newline="", encoding="UTF-8") as csvfile:
         writer = csv.writer(csvfile)
-        writer.writerow(["Section", "Subsection", "Title", "URL"])
-        writer.writerows(help_data)
+        writer.writerow(csv_headers)
+        writer.writerows(help_data_with_role)
 
     with open(student_services_path, "w", newline="", encoding="UTF-8") as csvfile:
         writer = csv.writer(csvfile)
-        writer.writerow(["Section", "Subsection", "Title", "URL"])
-        writer.writerows(student_services_data)
+        writer.writerow(csv_headers)
+        writer.writerows(student_services_data_with_role)
 
-    # *****Create the final dataframe*****
-
+    # --- Create the final dataframe ---
+    print("Combining all data into final dataframe...")
     index_path = os.path.join(DATA_PATH, "index")
 
     # Load the data into Dataframes
-    # df = pd.read_csv(f"{index_path}/acm.csv")
-    df2 = pd.read_csv(f"{index_path}/missionary.csv")
-    df3 = pd.read_csv(f"{index_path}/help.csv")
-    df4 = pd.read_csv(f"{index_path}/student_services.csv")
+    df_acm = pd.read_csv(f"{index_path}/acm.csv")
+    df_missionary = pd.read_csv(f"{index_path}/missionary.csv")
+    df_help = pd.read_csv(f"{index_path}/help.csv")
+    df_student_services = pd.read_csv(f"{index_path}/student_services.csv")
 
-    df = pd.concat([df2, df3, df4], ignore_index=True)  # df removed
+    # *** Include all dataframes in the concatenation ***
+    df = pd.concat([df_acm, df_missionary, df_help, df_student_services], ignore_index=True)
 
     df.fillna("Missing", inplace=True)
 
@@ -116,22 +125,22 @@ def get_indexes():
 
     df_merged = (
         df.groupby("URL")
-        .agg(
-            {
-                "Section": list,
-                "Subsection": list,
-                "Title": list,
-            }
-        )
+        .agg({
+            "Section": list,
+            "Subsection": list,
+            "Title": list,
+            "Role": "first",  # *** Keep the 'Role' column in the final merged file ***
+        })
         .reset_index()
     )
 
-    ## add a final column with the hash filename
+    # Add a final column with the hash filename
     df_merged["filename"] = df_merged["URL"].apply(generate_hash_filename)
-    # save the files as "all_links.csv"
+
+    # Save the files as "all_links.csv"
     df_merged.to_csv(os.path.join(DATA_PATH, "all_links.csv"), index=False)
 
-    print("All data collected and saved!")
-    print(f"All links saved in {DATA_PATH}/all_links.csv")
+    print("\nAll data collected and saved!")
+    print(f"All links saved in {os.path.join(DATA_PATH, 'all_links.csv')}")
     print("Process finished! Links ready to be crawled.")
     print()

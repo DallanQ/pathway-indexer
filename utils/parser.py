@@ -74,11 +74,11 @@ def clean_markdown(text):
     text = re.sub(r"^\| Information \|\n", "", text, flags=re.MULTILINE)
     text = re.sub(r"\*\s*(Home|Knowledge Base - Home|KA-\d+)\s*\n", "", text)
     text = re.sub(
-        r"(You’re offline.*?Knowledge Articles|Contoso, Ltd\.|BYU-Pathway Worldwide|Toggle navigation[.\w\s\*\+\-\:]+|Search Filter|Search\n|Knowledge Article Key:)",
+        r"(You're offline.*?Knowledge Articles|Contoso, Ltd\.|BYU-Pathway Worldwide|Toggle navigation[.\w\s\*\+\-\:]+|Search Filter|Search\n|Knowledge Article Key:)",
         "",
         text,
     )
-    text = re.sub(r"You’re offline\. This is a read only version of the page\.", "", text)
+    text = re.sub(r"You're offline\. This is a read only version of the page\.", "", text)
 
     # Others regular expressions to remove unnecessary text
     # Remove empty headers
@@ -269,7 +269,6 @@ def convert_html_to_markdown(file_path, out_folder):
 
     print(f"Converted HTML to TXT and saved to: {file_out}")
 
-
     return file_out, title_tag
 
 
@@ -320,13 +319,15 @@ def create_file_extractor(parse_type="pdf"):
     file_extractor = {".txt": parser}
     return file_extractor
 
+
 def has_markdown_tables(content):
     """Check if content contains markdown tables"""
     table_patterns = [
-        r'\|.*\|.*\|',          # Table row with cells
-        r'\|[\s-]*\|[\s-]*\|'   # Table header separator
+        r"\|.*\|.*\|",  # Table row with cells
+        r"\|[\s-]*\|[\s-]*\|",  # Table header separator
     ]
     return all(re.search(pattern, content, re.MULTILINE) for pattern in table_patterns)
+
 
 def parse_txt_to_md(file_path, file_extension, title_tag=""):
     """
@@ -337,7 +338,6 @@ def parse_txt_to_md(file_path, file_extension, title_tag=""):
     with open(file_path, encoding="utf-8") as f:
         content = f.read()
 
-        
     if not has_markdown_tables(content):
         documents = SimpleDirectoryReader(
             input_files=[file_path], file_extractor=create_file_extractor(file_extension)
@@ -398,6 +398,7 @@ def associate_markdown_with_metadata(data_path, markdown_dirs, csv_file, exclude
                 "heading": clean_text(row["Section"]),
                 "subheading": (clean_text(row["Subsection"]) if clean_text(row["Subsection"]) != "Missing" else ""),
                 "title": clean_text(row["Title"]),
+                "role": row.get("Role", "missionary"),
             }
 
     # Now go through the markdown files in each directory and associate them with the metadata

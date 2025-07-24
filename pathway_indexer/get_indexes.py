@@ -65,7 +65,7 @@ def get_indexes():
     missionary_data = crawl_index(MISSIONARY_URL, missionary_selectors)
     print("Missionary data collected!")
     print(f"Length of missionary data: {len(missionary_data)}")
-    missionary_data_with_role = [[*row, "missionary"] for row in missionary_data[2:]]
+    missionary_data_with_role = [[*row, "missionary"] for row in missionary_data[2:]]  # skip header rows
     print()
 
     # 3. Crawl Help data
@@ -83,58 +83,61 @@ def get_indexes():
     print()
 
     # --- Save the data ---
-    csv_headers = ["Section", "Subsection", "Title", "URL", "Role", "filename"]
+    csv_headers = ["Section", "Subsection", "Title", "URL", "Role"]
 
-    # Write each index CSV now including 'filename'
-    for path, rows in [
-        (acm_path, acm_data_with_role),
-        (missionary_path, missionary_data_with_role),
-        (help_path, help_data_with_role),
-        (student_services_path, student_services_data_with_role),
-    ]:
-        with open(path, "w", newline="", encoding="UTF-8") as csvfile:
-            writer = csv.writer(csvfile)
-            writer.writerow(csv_headers)
-            # for each row: append the computed filename at the end
-            for row in rows:
-                url = row[3]  # URL is the fourth element
-                writer.writerow([*row, generate_hash_filename(url)])
+    with open(acm_path, "w", newline="", encoding="UTF-8") as csvfile:
+        writer = csv.writer(csvfile)
+        writer.writerow(csv_headers)
+        writer.writerows(acm_data_with_role)
+
+    with open(missionary_path, "w", newline="", encoding="UTF-8") as csvfile:
+        writer = csv.writer(csvfile)
+        writer.writerow(csv_headers)
+        writer.writerows(missionary_data_with_role)
+
+    with open(help_path, "w", newline="", encoding="UTF-8") as csvfile:
+        writer = csv.writer(csvfile)
+        writer.writerow(csv_headers)
+        writer.writerows(help_data_with_role)
+
+    with open(student_services_path, "w", newline="", encoding="UTF-8") as csvfile:
+        writer = csv.writer(csvfile)
+        writer.writerow(csv_headers)
+        writer.writerows(student_services_data_with_role)
 
     # --- Create the final dataframe ---
     print("Combining all data into final dataframe...")
     index_path = os.path.join(DATA_PATH, "index")
 
-    # Load the data into DataFrames
+    # Load the data into Dataframes
     df_acm = pd.read_csv(f"{index_path}/acm.csv")
     df_missionary = pd.read_csv(f"{index_path}/missionary.csv")
     df_help = pd.read_csv(f"{index_path}/help.csv")
     df_student_services = pd.read_csv(f"{index_path}/student_services.csv")
 
-    # Concatenate all
+    # *** FIX 1: Include all dataframes in the concatenation ***
     df = pd.concat([df_acm, df_missionary, df_help, df_student_services], ignore_index=True)
 
     df.fillna("Missing", inplace=True)
 
-    # Strip off anchors
+    # remove from the urls, the # and everything after it
     df["URL"] = df["URL"].str.split("#").str[0]
 
-    # Group and keep first role
     df_merged = (
         df.groupby("URL")
         .agg({
             "Section": list,
             "Subsection": list,
             "Title": list,
-            "Role": "first",
-            "filename": "first",
+            "Role": "first",  # *** FIX 2: Keep the 'Role' column in the final merged file ***
         })
         .reset_index()
     )
 
-    # Ensure our filename column is consistent
+    # Add a final column with the hash filename
     df_merged["filename"] = df_merged["URL"].apply(generate_hash_filename)
 
-    # Save including filename
+    # Save the files as "all_links.csv"
     df_merged.to_csv(os.path.join(DATA_PATH, "all_links.csv"), index=False)
 
     print("\nAll data collected and saved!")

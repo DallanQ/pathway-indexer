@@ -65,16 +65,18 @@ def clean_markdown(text):
     # Remove specific table headers
     text = re.sub(r"\| \*\*Bot Information\*\* \|\n\| --- \|", "", text)
     text = re.sub(r"\| \*\*Information\*\* \|\n\| --- \|", "", text)
-    text = re.sub(r"Views:\n\n\|\s*Article Overview\s*\|\s*\n\|\s*---\s*\|\s*\n\|.*?\|", "", text, flags=re.DOTALL)
-    text = re.sub(r"\|\s*Information\s*\|\s*\n\|\s*---\s*\|\s*\n\|.*?\|", "", text, flags=re.DOTALL)
-    text = re.sub(r"\|\s*Bot Information\s*\|\s*\n\|\s*---\s*\|\s*\n\|.*?\|", "", text, flags=re.DOTALL)
-    text = re.sub(r"\n\s*\*\*Information\*\*\s*\n", "\n", text)
+    text = re.sub(
+        r"Views:\n\n\|\s\*Article Overview\s\*\|\s\*\n\|\s\*---\s\*\|\s\*\n\|.*?\|", "", text, flags=re.DOTALL
+    )
+    text = re.sub(r"\|\s\*Information\s\*\|\s\*\n\|\s\*---\s\*\|\s\*\n\|.*?\|", "", text, flags=re.DOTALL)
+    text = re.sub(r"\|\s\*Bot Information\s\*\|\s\*\n\|\s\*---\s\*\|\s\*\n\|.*?\|", "", text, flags=re.DOTALL)
+    text = re.sub(r"\n\s\*\*Information\*\*\s\*\n", "\n", text)
     text = re.sub(r"##? Views:\n\n\| \*\*Article Overview\*\* \|\n\| --- \|\n\|.*?\|", "", text, flags=re.DOTALL)
     text = re.sub(r"Views:\n\n\| \*\*Article Overview\*\* \|\n\| --- \|\n\|.*?\|", "", text, flags=re.DOTALL)
     text = re.sub(r"^\| Information \|\n", "", text, flags=re.MULTILINE)
-    text = re.sub(r"\*\s*(Home|Knowledge Base - Home|KA-\d+)\s*\n", "", text)
+    text = re.sub(r"\*\s\*(Home\|Knowledge Base - Home\|KA-\d+)\s\*\n", "", text)
     text = re.sub(
-        r"(You're offline.*?Knowledge Articles|Contoso, Ltd\.|BYU-Pathway Worldwide|Toggle navigation[.\w\s\*\+\-\:]+|Search Filter|Search\n|Knowledge Article Key:)",
+        r"(You're offline.*?Knowledge Articles\|Contoso, Ltd\.|BYU-Pathway Worldwide\|Toggle navigation[.\w\s\*\+\-\:]+\|Search Filter\|Search\n\|Knowledge Article Key:)",
         "",
         text,
     )
@@ -82,19 +84,19 @@ def clean_markdown(text):
 
     # Others regular expressions to remove unnecessary text
     # Remove empty headers
-    text = re.sub(r"^#+\s*$", "", text, flags=re.MULTILINE)
+    text = re.sub(r"^#+\s\*\$", "", text, flags=re.MULTILINE)
 
     # Remove text from WhatsApp navigation
-    text = re.sub(r"Copy link\S*", "Copy link", text)
+    text = re.sub(r"Copy link\S\*", "Copy link", text)
 
     # Remove text from the hall foundation menu
-    # text = re.sub(r"(Skip to content|Menu|[*+-].*)\n", '', text, flags=re.MULTILINE)
+    # text = re.sub(r"(Skip to content\|Menu\|[*+-].*)\n", '', text, flags=re.MULTILINE)
 
     # Remove broken links
-    text = re.sub(r"\[([^\]]+)\]\.\n\n\((http[^\)]+)\) \(([^)]+)\)\.", r"\1 (\3).", text)
+    text = re.sub(r"\[([^\]]+)\]\.\n\n\((http[^)]+)\) \(([^)]+)\)\.", r"\1 (\3).", text)
 
     # Remove consecutive blank lines
-    text = re.sub(r"\n\s*\n\s*\n", "\n\n", text)
+    text = re.sub(r"\n\s\*\n\s\*\n", "\n\n", text)
 
     return text
 
@@ -171,7 +173,7 @@ def clean_text(text):
         return ""
 
     # Replace null characters
-    text = re.sub(r"\x00", "th", text)
+    text = re.sub(r"\\x00", "th", text)
 
     # Remove leading and trailing whitespace
     text = text.strip()
@@ -470,7 +472,7 @@ def remove_existing_yaml_frontmatter(content):
     Removes existing YAML front matter from the given content.
     Assumes that front matter is enclosed between '---' markers.
     """
-    yaml_pattern = re.compile(r"^---[\s\S]*?---\s", re.MULTILINE)
+    yaml_pattern = re.compile(r"^---\s\S\*\?---\s", re.MULTILINE)
     return re.sub(yaml_pattern, "", content, count=1)
 
 

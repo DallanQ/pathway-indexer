@@ -83,7 +83,7 @@ def get_indexes():
     print()
 
     # --- Save the data ---
-    csv_headers = ["Section", "Subsection", "Title", "URL", "filename", "Role"]
+    csv_headers = ["Section", "Subsection", "Title", "URL", "Role", "filename"]
 
     # Write each index CSV now including 'filename'
     for path, rows in [

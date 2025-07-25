@@ -159,6 +159,7 @@ async def process_row(row, crawl_path, output_data):
     sub_heading = row["Subsection"]
     title = row["Title"]
     filename = row["filename"]
+    role = row["Role"]  # <--- 1. CAPTURE THE ROLE FROM THE ROW
 
     if "sharepoint.com" in url or url == "https://www.byupathway.edu/pathwayconnect-block-academic-calendar":
         return
@@ -213,6 +214,7 @@ async def process_row(row, crawl_path, output_data):
                 content_type.split("/")[1].split(";")[0],
                 content_hash,
                 datetime.datetime.now().isoformat(),
+                role,  # <--- 2. ADD THE ROLE TO THE OUTPUT DATA
             ])
             break
 
@@ -271,6 +273,7 @@ async def crawl_csv(df, base_dir, output_file="output_data.csv"):
             "Content Type",
             "Content Hash",
             "Last Update",
+            "Role",  # <--- 3. ADD 'Role' TO THE DATAFRAME COLUMNS
         ],
     )
     error_df = output_df[output_df["Content Hash"].isnull()]

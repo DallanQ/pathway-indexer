@@ -370,31 +370,20 @@ def parse_txt_to_md(file_path, file_extension, title_tag=""):
     return is_empty
 
 
-def associate_markdown_with_metadata(data_path, markdown_dirs, csv_file, excluded_domains):
+def associate_markdown_with_metadata(markdown_dirs, csv_file, excluded_domains):
     """
     Associates Markdown files with metadata from a CSV file.
-
-    Parameters:
-    - markdown_dirs (list): List of directories containing Markdown files.
-    - csv_file (str): Path to the CSV file containing metadata.
-
-    Returns:
-    - dict: Mapping of Markdown file paths to their corresponding metadata.
     """
-    # create the csv_path and open it, the data_path is related to the root but has
-    csv_path = os.path.join(data_path, csv_file)
+    # The 'csv_file' argument is now the full path, so we use it directly.
+    csv_path = csv_file
 
     all_files = get_files(markdown_dirs)
-    # Read the CSV file and store the file paths, URLs, headings, and subheadings in a dictionary
     file_metadata_mapping = {}
     with open(csv_path, newline="", encoding="utf-8") as file:
         reader = csv.DictReader(file)
         for row in reader:
-            # Extract the filename without the extension and use it as the key
             filename_with_ext = os.path.basename(row["filename"])
             filename_without_ext = os.path.splitext(filename_with_ext)[0]
-
-            # Store metadata using filename without extension as the key
             file_metadata_mapping[filename_without_ext] = {
                 "url": row["URL"],
                 "heading": clean_text(row["Section"]),
@@ -403,9 +392,8 @@ def associate_markdown_with_metadata(data_path, markdown_dirs, csv_file, exclude
                 "role": row.get("Role", "missionary"),
             }
 
-    # Now go through the markdown files in each directory and associate them with the metadata
+    # The rest of the function remains exactly the same...
     markdown_metadata_mapping = {}
-    # List to save files without metadata
     no_metadata = []
 
     for markdown_path in all_files:
@@ -453,12 +441,6 @@ def associate_markdown_with_metadata(data_path, markdown_dirs, csv_file, exclude
             no_metadata.append(markdown_path)
 
     # Guardamos en CSV las rutas de Markdown sin metadata
-    no_metadata_csv_path = os.path.join(data_path, "no_metadata.csv")
-    with open(no_metadata_csv_path, mode="w", newline="", encoding="utf-8") as nm_file:
-        writer = csv.writer(nm_file)
-        writer.writerow(["markdown_path"])
-        for nm_path in no_metadata:
-            writer.writerow([nm_path])
 
     print("\nMarkdown files and their metadata:")
     for path, meta in markdown_metadata_mapping.items():

@@ -132,7 +132,7 @@ def process_modified_files(input_directory, out_folder, metadata_csv, excluded_d
 
     # This function should now read output_data.csv instead of all_links.csv
     # to get the definitive role for each file.
-    metadata_dict = associate_markdown_with_metadata(input_directory, out_folder, output_data_path, excluded_domains)
+    metadata_dict = associate_markdown_with_metadata(out_folder, output_data_path, excluded_domains)
     print("Metadata association completed.")
 
     print("Attaching metadata to Markdown files...")

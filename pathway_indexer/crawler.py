@@ -18,6 +18,13 @@ def crawl_data():
     async def main():
         """Crawl the index and get the data."""
         df = pd.read_csv(os.path.join(DATA_PATH, "all_links.csv"))
+
+        # --- TEMPORARY: LIMIT LINKS FOR TESTING ---
+        # To process approximately one-third of the links, uncomment the line below.
+        # Remember to remove or comment this line out after testing!
+        df = df.head(len(df) // 3)
+        # ------------------------------------------
+
         # filter only the urls from whatsapp
         await crawl_csv(df=df, base_dir=DATA_PATH)
 

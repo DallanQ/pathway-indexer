@@ -144,5 +144,11 @@ def process_modified_files(input_directory, out_folder, metadata_csv, excluded_d
     calendar_format(input_directory, metadata_csv)  # This can still use all_links
 
 
-def is_directory_empty(directory_path):
-    return not os.listdir(directory_path)
+def is_directory_empty(directory_path, subdirs):
+    """Checks if specified subdirectories within the crawl path are empty."""
+    base_crawl_path = os.path.join(directory_path, "crawl")
+    for subdir in subdirs:
+        path_to_check = os.path.join(base_crawl_path, subdir)
+        if os.path.exists(path_to_check) and os.listdir(path_to_check):
+            return False  # Found a non-empty subdir, so the directory is not "empty"
+    return True  # All specified subdirs are empty or don't exist

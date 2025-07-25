@@ -335,41 +335,48 @@ def has_markdown_tables(content):
 
 def parse_txt_to_md(file_path, file_extension, title_tag=""):
     """
-    Parses a .txt file to a Markdown (.md) file using LlamaParse.
+    Parses a .txt file to a Markdown (.md) file.
+    It first checks if the content is already well-formed.
+    If not, it uses LlamaParse.
     """
-    # get the file extension
-
     with open(file_path, encoding="utf-8") as f:
-        content = f.read()
+        content = f.read().strip()
 
-    if not has_markdown_tables(content):
-        documents = SimpleDirectoryReader(
-            input_files=[file_path], file_extractor=create_file_extractor(file_extension)
-        ).load_data()
-    else:
-        # save the content to a list of documents
-        documents = SimpleDirectoryReader(input_files=[file_path]).load_data()
-
-    # size = sum([len(doc.text) for doc in documents])
-    # validate if the content is empty
-    is_empty = all(is_empty_content(doc.text) for doc in documents)
-
-    # base_filename = os.path.basename(file_path)
     out_name = file_path.replace(".txt", ".md")
-
     title_tag = clean_title(title_tag)
 
-    # os.makedirs(os.path.dirname(out_name), exist_ok=True)
+    # Heuristic to check if content is already good markdown
+    # If it contains markdown headers and is not empty, we trust it.
+    if content and "##" in content:
+        print(f"Content in {os.path.basename(file_path)} looks good. Bypassing LlamaParse.")
+        final_content = content
+    else:
+        # If content is messy or empty, use LlamaParse
+        print(f"Content in {os.path.basename(file_path)} is messy or empty. Using LlamaParse.")
+        try:
+            # Note: has_markdown_tables logic was removed for simplicity,
+            # LlamaParse should handle tables correctly with the right prompt.
+            documents = SimpleDirectoryReader(
+                input_files=[file_path], file_extractor=create_file_extractor(file_extension)
+            ).load_data()
+            final_content = "\n\n".join([doc.text for doc in documents])
+        except Exception as e:
+            print(f"LlamaParse failed for {file_path}: {e}")
+            final_content = ""  # Ensure it's an empty string on failure
 
+    # Check if the final content is empty
+    if is_empty_content(final_content):
+        print(f"Final content for {os.path.basename(out_name)} is empty.")
+        return True  # True indicates failure/empty
+
+    # Write the final content to the .md file
     with open(out_name, "w", encoding="utf-8") as f:
         if title_tag:
             f.write(f"title: {title_tag}\n")
-        for doc in documents:
-            f.write(doc.text)
-            f.write("\n\n")
-        print(f"Parsed TXT to MD and saved to: {out_name}")
+        f.write(final_content)
 
-    return is_empty
+    print(f"Parsed TXT to MD and saved to: {out_name}")
+    return False  # False indicates success
 
 
 def associate_markdown_with_metadata(markdown_dirs, csv_file, excluded_domains):

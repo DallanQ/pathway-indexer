@@ -1,16 +1,16 @@
 import os
 import re
+from collections.abc import Sequence
 from typing import Any, Optional
 
-from collections.abc import Sequence
-from llama_index.core.callbacks.base import CallbackManager
 import spacy
-from llama_index.core.node_parser.interface import NodeParser
-from llama_index.core.bridge.pydantic import Field
-from llama_index.core.schema import BaseNode, MetadataMode, TextNode
-from llama_index.core.ingestion import IngestionPipeline
-from llama_index.core.utils import get_tqdm_iterable
 from llama_index.core import VectorStoreIndex
+from llama_index.core.bridge.pydantic import Field
+from llama_index.core.callbacks.base import CallbackManager
+from llama_index.core.ingestion import IngestionPipeline
+from llama_index.core.node_parser.interface import NodeParser
+from llama_index.core.schema import BaseNode, MetadataMode, TextNode
+from llama_index.core.utils import get_tqdm_iterable
 from llama_index.vector_stores.pinecone import PineconeVectorStore
 
 INDEX_METADATA_KEYS = [
@@ -28,6 +28,12 @@ MD_METADATA_KEYS = [
 ORDERED_LIST_ITEM_PATTERN = r"^\s*\d+\.\s"
 UNORDERED_LIST_ITEM_PATTERN = r"^\s*[-*+]\s"
 
+# Error messages
+PINECONE_CONFIG_ERROR = (
+    "Please set PINECONE_API_KEY, PINECONE_INDEX_NAME, and PINECONE_ENVIRONMENT"
+    " to your environment variables or config them in the .env file"
+)
+
 
 class AltNodeParser(NodeParser):
     """Alternate Node Parser"""
@@ -39,51 +45,37 @@ class AltNodeParser(NodeParser):
 
     embed_prev_next_sentences: int = Field(
         default=0,
-        description=(
-            "Number of previous and next sentences to include when calculating embeddings."
-        ),
+        description=("Number of previous and next sentences to include when calculating embeddings."),
     )
 
     embed_prev_next_paragraphs: int = Field(
         default=0,
-        description=(
-            "Number of previous and next paragraphs to include when calculating embeddings."
-        ),
+        description=("Number of previous and next paragraphs to include when calculating embeddings."),
     )
 
     max_embed_length: int = Field(
         default=2048,
-        description=(
-            "Maximum length of text to embed. Used when embedding previous and next sentences or paragraphs."
-        ),
+        description=("Maximum length of text to embed. Used when embedding previous and next sentences or paragraphs."),
     )
 
     embed_index_headers: bool = Field(
         default=False,
-        description=(
-            "Include headers from the index page when calculating embeddings."
-        ),
+        description=("Include headers from the index page when calculating embeddings."),
     )
 
     embed_md_headers: bool = Field(
         default=False,
-        description=(
-            "Include headers from the markdown document when calculating embeddings."
-        ),
+        description=("Include headers from the markdown document when calculating embeddings."),
     )
 
     include_prev_next_paragraphs: int = Field(
         default=0,
-        description=(
-            "Number of previous and next paragraphs to include in text for the LLM."
-        ),
+        description=("Number of previous and next paragraphs to include in text for the LLM."),
     )
 
     max_include_length: int = Field(
         default=2048,
-        description=(
-            "Maximum length of text to pass to the LLM. Used when including previous and next paragraphs."
-        ),
+        description=("Maximum length of text to pass to the LLM. Used when including previous and next paragraphs."),
     )
 
     include_index_headers: bool = Field(
@@ -147,6 +139,43 @@ class AltNodeParser(NodeParser):
 
         return all_nodes
 
+    def _process_sentence_nodes(self, nodes: list[TextNode]) -> list[TextNode]:
+        """Process sentence nodes with embeddings."""
+        sentence_nodes = get_sentences(nodes)
+        if self.embed_prev_next_sentences > 0:
+            sentence_nodes = embed_prev_next(
+                sentence_nodes,
+                self.embed_prev_next_sentences,
+                self.max_embed_length,
+            )
+        return sentence_nodes
+
+    def _process_paragraph_nodes(self, nodes: list[TextNode]) -> list[TextNode]:
+        """Process paragraph nodes with embeddings."""
+        if self.embed_prev_next_paragraphs > 0:
+            nodes = embed_prev_next(nodes, self.embed_prev_next_paragraphs, self.max_embed_length)
+        return nodes
+
+    def _add_metadata_headers(self, nodes: list[TextNode]) -> None:
+        """Add index and markdown headers to nodes."""
+        if self.embed_index_headers or self.embed_md_headers:
+            keys = []
+            if self.embed_index_headers:
+                keys.extend(INDEX_METADATA_KEYS)
+            if self.embed_md_headers:
+                keys.extend(MD_METADATA_KEYS)
+            embed_metadata(nodes, keys)
+
+    def _include_metadata_headers(self, nodes: list[TextNode]) -> None:
+        """Include index and markdown headers in text for LLM."""
+        if self.include_index_headers or self.include_md_headers:
+            keys = []
+            if self.include_index_headers:
+                keys.extend(INDEX_METADATA_KEYS)
+            if self.include_md_headers:
+                keys.extend(MD_METADATA_KEYS)
+            include_metadata(nodes, keys)
+
     def get_nodes_from_node(self, node: BaseNode, **kwargs: Any) -> list[TextNode]:
         """Split a node into a list of nodes."""
 
@@ -156,44 +185,24 @@ class AltNodeParser(NodeParser):
         nodes = get_paragraph_nodes(headers_paragraphs, node)
         # include previous and next paragraphs
         if self.include_prev_next_paragraphs > 0:
-            include_prev_next_contexts(
-                nodes, self.include_prev_next_paragraphs, self.max_include_length
-            )
+            include_prev_next_contexts(nodes, self.include_prev_next_paragraphs, self.max_include_length)
+
         # split by sentence, paragraph, or both
         sentence_nodes = []
         if self.split_by in ["sentence", "both"]:
-            sentence_nodes = get_sentences(nodes)
-            if self.embed_prev_next_sentences > 0:
-                sentence_nodes = embed_prev_next(
-                    sentence_nodes,
-                    self.embed_prev_next_sentences,
-                    self.max_embed_length,
-                )
+            sentence_nodes = self._process_sentence_nodes(nodes)
+
         if self.split_by == "sentence":
             nodes = sentence_nodes
         else:  # paragraph or both
-            if self.embed_prev_next_paragraphs > 0:
-                nodes = embed_prev_next(
-                    nodes, self.embed_prev_next_paragraphs, self.max_embed_length
-                )
+            nodes = self._process_paragraph_nodes(nodes)
             if self.split_by == "both":
                 nodes.extend(sentence_nodes)
+
         # embed index and/or markdown headers
-        if self.embed_index_headers or self.embed_md_headers:
-            keys = []
-            if self.embed_index_headers:
-                keys.extend(INDEX_METADATA_KEYS)
-            if self.embed_md_headers:
-                keys.extend(MD_METADATA_KEYS)
-            embed_metadata(nodes, keys)
+        self._add_metadata_headers(nodes)
         # include index and/or markdown headers in text sent to the LLM
-        if self.include_index_headers or self.include_md_headers:
-            keys = []
-            if self.include_index_headers:
-                keys.extend(INDEX_METADATA_KEYS)
-            if self.include_md_headers:
-                keys.extend(MD_METADATA_KEYS)
-            include_metadata(nodes, keys)
+        self._include_metadata_headers(nodes)
 
         return nodes
 
@@ -241,17 +250,89 @@ def extract_index_metadata(node):
     return TextNode(metadata=headers, text=content)
 
 
+def _is_table_row(line):
+    """Check if line is part of a table (has | character and isn't a blockquote)."""
+    return "|" in line and not line.lstrip().startswith(">")
+
+
+def _is_table_separator(line):
+    """Check if line is a table header separator (contains only |, -, and spaces)."""
+    stripped = line.strip()
+    return stripped and all(c in "|-: " for c in stripped)
+
+
+def _process_table_content(line, in_table, table_buffer, paragraph_lines, results):
+    """Process table content and return updated state."""
+    if _is_table_row(line) or _is_table_separator(line):
+        if not in_table:
+            # Start of a new table
+            if paragraph_lines:
+                results.append("\n".join(paragraph_lines))
+                paragraph_lines.clear()
+            in_table = True
+        table_buffer.append(line)
+    elif in_table:
+        # Allow blank lines between table header and rows
+        if line.strip() == "":
+            return in_table, table_buffer, paragraph_lines
+        elif not _is_table_row(line) and not _is_table_separator(line):
+            # End of table when a non-table line appears
+            if table_buffer:
+                results.append("\n".join(table_buffer))
+                table_buffer.clear()
+            in_table = False
+            paragraph_lines.append(line)
+        else:
+            table_buffer.append(line)
+    return in_table, table_buffer, paragraph_lines
+
+
+def _process_regular_text(line, blank_line, paragraph_lines, results):
+    """Process regular text content and return updated state."""
+    if len(line) == 0:
+        blank_line = True
+    elif line.startswith("#"):
+        if paragraph_lines:
+            results.append("\n".join(paragraph_lines))
+            paragraph_lines.clear()
+        results.append(line)
+        blank_line = False
+    elif re.match(ORDERED_LIST_ITEM_PATTERN, line) or re.match(UNORDERED_LIST_ITEM_PATTERN, line):
+        if blank_line and paragraph_lines:
+            paragraph_lines.append("")
+        paragraph_lines.append(line)
+        blank_line = False
+    else:
+        if blank_line and paragraph_lines:
+            results.append("\n".join(paragraph_lines))
+            paragraph_lines.clear()
+        paragraph_lines.append(line)
+        blank_line = False
+    return blank_line, paragraph_lines
+
+
+def _cleanup_headers_and_paragraphs(results):
+    """Clean up headers and paragraphs in results."""
+    # Handle orphan headers or short paragraphs
+    for i in range(len(results) - 2):
+        if results[i].startswith("# ") and (
+            (len(results[i + 1].split()) <= 5 and results[i + 2].startswith("# ")) or results[i + 1].startswith("# ")
+        ):
+            results[i] = results[i].lstrip("# ")
+
+    # Remove duplicates or join short paragraphs
+    for i in range(len(results) - 1):
+        if results[i] == results[i + 1]:
+            results[i] = ""
+        elif not results[i].startswith("#") and len(results[i].split()) <= 5:
+            results[i] = f"{results[i - 1]}\n{results[i]}"
+            results[i - 1] = ""
+
+    return [result for result in results if result]
+
+
 def get_headers_and_paragraphs(node: BaseNode) -> list[str]:
     """Get headers and paragraphs from a node."""
-
-    def is_table_row(line):
-        # Check if line is part of a table (has | character and isn't a blockquote)
-        return '|' in line and not line.lstrip().startswith('>')
-
-    def is_table_separator(line):
-        # Check if line is a table header separator (contains only |, -, and spaces)
-        stripped = line.strip()
-        return stripped and all(c in '|-: ' for c in stripped)
 
     # get text from the node
     text = node.get_content(metadata_mode=MetadataMode.NONE)
@@ -264,52 +345,15 @@ def get_headers_and_paragraphs(node: BaseNode) -> list[str]:
     # split text by newline
     for line in text.split("\n"):
         line = line.rstrip()
-        
+
         # Table handling
-        if is_table_row(line) or is_table_separator(line):
-            if not in_table:
-                # Start of a new table
-                if paragraph_lines:
-                    results.append("\n".join(paragraph_lines))
-                    paragraph_lines = []
-                in_table = True
-            table_buffer.append(line)
-        elif in_table:
-            # Allow blank lines between table header and rows
-            if line.strip() == "":
-                continue
-            elif not is_table_row(line) and not is_table_separator(line):
-                # End of table when a non-table line appears
-                if table_buffer:
-                    results.append("\n".join(table_buffer))
-                    table_buffer = []
-                in_table = False
-                paragraph_lines.append(line)
-            else:
-                table_buffer.append(line)
-        else:
+        in_table, table_buffer, paragraph_lines = _process_table_content(
+            line, in_table, table_buffer, paragraph_lines, results
+        )
+
+        if not in_table and not (_is_table_row(line) or _is_table_separator(line)):
             # Regular text handling (existing logic)
-            if len(line) == 0:
-                blank_line = True
-            elif line.startswith("#"):
-                if paragraph_lines:
-                    results.append("\n".join(paragraph_lines))
-                    paragraph_lines = []
-                results.append(line)
-                blank_line = False
-            elif re.match(ORDERED_LIST_ITEM_PATTERN, line) or re.match(
-                UNORDERED_LIST_ITEM_PATTERN, line
-            ):
-                if blank_line and paragraph_lines:
-                    paragraph_lines.append("")
-                paragraph_lines.append(line)
-                blank_line = False
-            else:
-                if blank_line and paragraph_lines:
-                    results.append("\n".join(paragraph_lines))
-                    paragraph_lines = []
-                paragraph_lines.append(line)
-                blank_line = False
+            blank_line, paragraph_lines = _process_regular_text(line, blank_line, paragraph_lines, results)
 
     # Add remaining table or paragraph
     if table_buffer:
@@ -320,23 +364,7 @@ def get_headers_and_paragraphs(node: BaseNode) -> list[str]:
     # Clean up results
     results = [result.strip() for result in results if result.strip()]
 
-    # Handle orphan headers or short paragraphs
-    for i in range(len(results) - 2):
-        if results[i].startswith("# ") and (
-            (len(results[i + 1].split()) <= 5 and results[i + 2].startswith("# "))
-            or results[i + 1].startswith("# ")
-        ):
-            results[i] = results[i].lstrip("# ")
-
-    # Remove duplicates or join short paragraphs
-    for i in range(len(results) - 1):
-        if results[i] == results[i + 1]:
-            results[i] = ""
-        elif not results[i].startswith("#") and len(results[i].split()) <= 5:
-            results[i] = f"{results[i-1]}\n{results[i]}"
-            results[i - 1] = ""
-    return [result for result in results if result]
-
+    return _cleanup_headers_and_paragraphs(results)
 
 
 def update_headers(par: str, headers: dict) -> None:
@@ -355,15 +383,13 @@ def update_headers(par: str, headers: dict) -> None:
             break
 
 
-def get_paragraph_nodes(
-    headers_paragraphs: list[str], doc_node: BaseNode
-) -> list[TextNode]:
+def get_paragraph_nodes(headers_paragraphs: list[str], doc_node: BaseNode) -> list[TextNode]:
     """Get paragraph nodes with header metadata from a list of headers
     and paragraphs and the original document node."""
 
     nodes = []
     headers = {}
-    doc_metadata = {key: value for key, value in doc_node.metadata.items()}
+    doc_metadata = dict(doc_node.metadata.items())
     for par in headers_paragraphs:
         # if this is a header, update the headers
         if par.startswith("#"):
@@ -381,16 +407,10 @@ def get_paragraph_nodes(
 
 def _equal_headers(metadata1: dict, metadata2: dict) -> bool:
     """Check if two metadata dictionaries have the same headers."""
-
-    for key in MD_METADATA_KEYS:
-        if metadata1.get(key, "") != metadata2.get(key, ""):
-            return False
-    return True
+    return all(metadata1.get(key, "") == metadata2.get(key, "") for key in MD_METADATA_KEYS)
 
 
-def include_prev_next_contexts(
-    nodes: list[TextNode], count: int, max_length: int
-) -> None:
+def include_prev_next_contexts(nodes: list[TextNode], count: int, max_length: int) -> None:
     """
     Include up to count previous and next contexts in the context of each node
     while they have the same headers and the combined length is less than the max length.
@@ -409,9 +429,7 @@ def include_prev_next_contexts(
             if next_node and _equal_headers(node.metadata, next_node.metadata):
                 next_context = node_contexts[i + j]
             if len(prev_context) + len(node_context) + len(next_context) <= max_length:
-                node_context = (
-                    f"{prev_context}\n\n{node_context}\n\n{next_context}".strip()
-                )
+                node_context = f"{prev_context}\n\n{node_context}\n\n{next_context}".strip()
             else:
                 break
         node.metadata["context"] = node_context
@@ -425,14 +443,12 @@ def get_sentences(nodes: list[TextNode]) -> list[TextNode]:
     for node in nodes:
         doc = nlp(node.text)
         for sent in doc.sents:
-            metadata = {key: value for key, value in node.metadata.items()}
+            metadata = dict(node.metadata.items())
             sentence_nodes.append(TextNode(metadata=metadata, text=sent.text))
     return sentence_nodes
 
 
-def embed_prev_next(
-    nodes: list[TextNode], count: int, max_length: int
-) -> list[TextNode]:
+def embed_prev_next(nodes: list[TextNode], count: int, max_length: int) -> list[TextNode]:
     """
     Include up to count previous and next texts in the text of each node
     while they have the same headers and the combined length is less than the max length.
@@ -455,7 +471,7 @@ def embed_prev_next(
             else:
                 break
         node = TextNode(
-            metadata={key: value for key, value in node.metadata.items()},
+            metadata=dict(node.metadata.items()),
             text=node_text,
         )
         embed_nodes.append(node)
@@ -485,9 +501,44 @@ def include_metadata(nodes: list[TextNode], metadata_keys: list[str]):
             if value:
                 headers.append(value)
         if len(headers) > 0:
-            node.metadata["context"] = (
-                f"{' / '.join(headers)}\n\n{node.metadata.get('context', '')}"
-            )
+            node.metadata["context"] = f"{' / '.join(headers)}\n\n{node.metadata.get('context', '')}"
+
+
+def _process_nodes_metadata(nodes, include_prev_next_rel):
+    """Process nodes metadata for prev/next relationships."""
+    if include_prev_next_rel:
+        for i in range(0, len(nodes)):
+            if i > 0:
+                nodes[i].metadata["prev"] = nodes[i - 1].text
+            if i < len(nodes) - 1:
+                nodes[i].metadata["next"] = nodes[i + 1].text
+
+
+def _update_node_context_and_sequence(nodes):
+    """Update node context and sequence metadata."""
+    # from the metadata, remove the "context" key
+    for node in nodes:
+        if "context" in node.metadata:
+            node.text = node.metadata["context"]
+            del node.metadata["context"]
+
+    url = nodes[0].metadata["url"]
+    sequence = 1
+
+    for node in nodes:
+        # ignore files without a URL
+        if "url" not in node.metadata:
+            print(f"Node without URL: {node.metadata}")
+            continue
+
+        if url == node.metadata["url"]:
+            node.metadata["sequence"] = sequence
+            sequence += 1
+        else:
+            url = node.metadata["url"]
+            sequence = 1
+            node.metadata["sequence"] = sequence
+            sequence += 1
 
 
 def run_pipeline(documents, splitter, embed_model, vector_store, include_prev_next_rel):
@@ -504,51 +555,27 @@ def run_pipeline(documents, splitter, embed_model, vector_store, include_prev_ne
     )
     nodes = pipeline.run(documents=documents, show_progress=False)
 
-    if include_prev_next_rel:
-        for i in range(0, len(nodes)):
-            if i > 0:
-                nodes[i].metadata["prev"] = nodes[i - 1].text
-            if i < len(nodes) - 1:
-                nodes[i].metadata["next"] = nodes[i + 1].text
+    # --- THIS IS THE FIX YOU MUST IMPLEMENT ---
+    if nodes:
+        _process_nodes_metadata(nodes, include_prev_next_rel)
+        _update_node_context_and_sequence(nodes)
+        # (All the existing code for processing nodes goes here)
+        # ...
+        index.insert_nodes(nodes)
+        print(f"Nodes inserted: {len(nodes)}")
+    else:
+        print("⚠️ Warning: No nodes were generated from the documents. Nothing to insert into Pinecone.")
+    # --- END OF FIX ---
 
-    # from the metadata, remove the "context" key
-    for node in nodes:
-        if "context" in node.metadata:
-            node.text = node.metadata["context"]
-            del node.metadata["context"]
+    return index, nodes
 
-    url = nodes[0].metadata['url']
-    sequence = 1
-
-    for node in nodes:
-        
-        # ignore files without a URL
-        if 'url' not in node.metadata:
-            print(f"Node without URL: {node.metadata}")
-            continue
-        
-        if url == node.metadata['url']:
-            node.metadata['sequence'] = sequence
-            sequence += 1
-        else:
-            url = node.metadata['url']
-            sequence = 1
-            node.metadata['sequence'] = sequence
-            sequence += 1
-
-    index.insert_nodes(nodes)
-    print(f"Nodes inserted: {len(nodes)}")
-    return index, nodes  # CHANGED
 
 def get_vector_store():
     api_key = os.getenv("PINECONE_API_KEY")
     index_name = os.getenv("PINECONE_INDEX_NAME")
     environment = os.getenv("PINECONE_ENVIRONMENT")
     if not api_key or not index_name or not environment:
-        raise ValueError(
-            "Please set PINECONE_API_KEY, PINECONE_INDEX_NAME, and PINECONE_ENVIRONMENT"
-            " to your environment variables or config them in the .env file"
-        )
+        raise ValueError(PINECONE_CONFIG_ERROR)
     store = PineconeVectorStore(
         api_key=api_key,
         index_name=index_name,

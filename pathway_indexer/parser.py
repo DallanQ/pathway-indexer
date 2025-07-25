@@ -1,3 +1,4 @@
+# pathway_indexer/parser.py
 import os
 import shutil
 
@@ -107,6 +108,7 @@ def process_modified_files(input_directory, out_folder, metadata_csv, excluded_d
     """
     Process modified files and associate metadata with Markdown files.
     """
+    # This check for subdirectories is fine as you've implemented it.
     if is_directory_empty(input_directory, ["html", "pdf"]):
         print("No modified files found in html or pdf subdirectories; skipping file processing.")
         return
@@ -123,25 +125,24 @@ def process_modified_files(input_directory, out_folder, metadata_csv, excluded_d
         with open(excluded_domains_path, encoding="UTF-8") as f:
             excluded_domains = f.read().splitlines()
 
-    # --- MODIFICATION ---
-    # Use output_data.csv which now reliably contains the 'Role'
-    output_data_path = os.path.join(DATA_PATH, "output_data.csv")
-    if not os.path.exists(output_data_path):
-        print(f"Error: {output_data_path} not found. Cannot attach metadata.")
+    # --- THIS IS THE FIX ---
+    # The 'metadata_csv' variable (which defaults to "all_links.csv") holds the correct filename.
+    # We must use it here instead of hardcoding a different path.
+    all_links_path = os.path.join(DATA_PATH, metadata_csv)
+    if not os.path.exists(all_links_path):
+        print(f"Error: {all_links_path} not found. Cannot attach metadata.")
         return
 
-    # This function should now read output_data.csv instead of all_links.csv
-    # to get the definitive role for each file.
-    metadata_dict = associate_markdown_with_metadata(out_folder, output_data_path, excluded_domains)
+    # Pass the correct CSV path to the function.
+    metadata_dict = associate_markdown_with_metadata(out_folder, all_links_path, excluded_domains)
     print("Metadata association completed.")
 
     print("Attaching metadata to Markdown files...")
-    # This function will now receive the correct metadata_dict with the right roles
     attach_metadata_to_markdown_directories(out_folder, metadata_dict)
     print("Metadata attachment completed.")
 
     print("Processing special formats...")
-    calendar_format(input_directory, metadata_csv)  # This can still use all_links
+    calendar_format(input_directory, metadata_csv)
 
 
 def is_directory_empty(directory_path, subdirs):

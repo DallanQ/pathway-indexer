@@ -18,13 +18,6 @@ def crawl_data():
     async def main():
         """Crawl the index and get the data."""
         df = pd.read_csv(os.path.join(DATA_PATH, "all_links.csv"))
-
-        # --- TEMPORARY: FILTER FOR ACM LINKS FOR TESTING ---
-        # To process only ACM links, the line below filters the DataFrame.
-        # Remember to remove or comment this line out after testing!
-        df = df[df["Role"] == "ACM"]
-        # -------------------------------------------------
-
         # filter only the urls from whatsapp
         await crawl_csv(df=df, base_dir=DATA_PATH)
 

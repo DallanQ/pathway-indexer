@@ -1,4 +1,3 @@
-# pathway_indexer/get_indexes.py
 import asyncio
 import csv
 import os
@@ -130,7 +129,7 @@ def get_indexes():
             "Section": list,
             "Subsection": list,
             "Title": list,
-            "Role": "first",  # *** FIX 2: Keep the 'Role' column in the final merged file ***
+            "Role": "first",  # ***Keep the 'Role' column in the final merged file ***
         })
         .reset_index()
     )

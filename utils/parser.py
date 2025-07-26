@@ -1,5 +1,3 @@
-# utils/parser.py
-
 import csv
 import logging
 import os
@@ -387,12 +385,17 @@ def associate_markdown_with_metadata(markdown_dirs, csv_file, excluded_domains):
     csv_path = csv_file
 
     all_files = get_files(markdown_dirs)
+
+    # Read the CSV file and store the file paths, URLs, headings, and subheadings in a dictionary
     file_metadata_mapping = {}
     with open(csv_path, newline="", encoding="utf-8") as file:
         reader = csv.DictReader(file)
         for row in reader:
+            # Extract the filename without the extension and use it as the key
             filename_with_ext = os.path.basename(row["filename"])
             filename_without_ext = os.path.splitext(filename_with_ext)[0]
+
+            # Store metadata using filename without extension as the key
             file_metadata_mapping[filename_without_ext] = {
                 "url": row["URL"],
                 "heading": clean_text(row["Section"]),
@@ -401,9 +404,9 @@ def associate_markdown_with_metadata(markdown_dirs, csv_file, excluded_domains):
                 "role": row.get("Role", "missionary"),
             }
 
-    # The rest of the function remains exactly the same...
+    # Now go through the markdown files in each directory and associate them with the metadata
     markdown_metadata_mapping = {}
-    no_metadata = []
+    no_metadata = []  # List to save files without metadata
 
     for markdown_path in all_files:
         # Get the markdown filename without the extension

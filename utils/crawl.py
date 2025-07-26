@@ -159,7 +159,7 @@ async def process_row(row, crawl_path, output_data):
     sub_heading = row["Subsection"]
     title = row["Title"]
     filename = row["filename"]
-    role = row["Role"]  # <--- 1. CAPTURE THE ROLE FROM THE ROW
+    role = row["Role"]  # capture the role from the row
 
     if "sharepoint.com" in url or url == "https://www.byupathway.edu/pathwayconnect-block-academic-calendar":
         return
@@ -214,7 +214,7 @@ async def process_row(row, crawl_path, output_data):
                 content_type.split("/")[1].split(";")[0],
                 content_hash,
                 datetime.datetime.now().isoformat(),
-                role,  # <--- 2. ADD THE ROLE TO THE OUTPUT DATA
+                role,  # Add role to the output data
             ])
             break
 
@@ -247,6 +247,10 @@ async def process_row(row, crawl_path, output_data):
 async def crawl_csv(df, base_dir, output_file="output_data.csv"):
     """Takes CSV file in the format Heading, Subheading, Title, URL and processes each URL."""
 
+    # Define a base directory within the user's space
+    # base_dir = "../data/data_16_09_24/crawl/"
+
+    # Create directories if they don't exist
     crawl_path = os.path.join(base_dir, "crawl")
     print(crawl_path)
     create_folder(crawl_path, is_full=True)
@@ -256,12 +260,14 @@ async def crawl_csv(df, base_dir, output_file="output_data.csv"):
 
     output_data = []
 
+    # Process rows in batches of 10 to manage memory usage efficiently
     batch_size = 10
     for i in range(0, len(df), batch_size):
-        batch = df.iloc[i : i + batch_size]
-        tasks = [process_row(row, crawl_path, output_data) for _, row in batch.iterrows()]
-        await asyncio.gather(*tasks)
+        batch = df.iloc[i : i + batch_size]  # Get next batch of rows
+        tasks = [process_row(row, crawl_path, output_data) for _, row in batch.iterrows()]  # Create tasks for batch
+        await asyncio.gather(*tasks)  # Process batch before continuing
 
+    # Create a DataFrame from the output data
     output_df = pd.DataFrame(
         output_data,
         columns=[
@@ -273,23 +279,28 @@ async def crawl_csv(df, base_dir, output_file="output_data.csv"):
             "Content Type",
             "Content Hash",
             "Last Update",
-            "Role",  # <--- 3. ADD 'Role' TO THE DATAFRAME COLUMNS
+            "Role",  # Add 'Role' to the dataframe columns
         ],
     )
+    # Filtering rows where 'Content Hash' is None
     error_df = output_df[output_df["Content Hash"].isnull()]
     error_csv_path = os.path.join(base_dir, "error.csv")
 
+    # Saving the filtered DataFrame to a CSV file named "error.csv"
     error_df.to_csv(error_csv_path, index=False)
 
     out_path = os.path.join(base_dir, output_file)
 
+    # Append to the existing CSV file or create a new one if it doesn't exist
     if os.path.exists(out_path):
         existing_df = pd.read_csv(out_path)
         combined_df = pd.concat([existing_df, output_df], ignore_index=True)
 
+        # Delete the 'Last Update' column temporarily to remove duplicates
         combined_df_no_update = combined_df.drop(columns=["Last Update"])
         combined_df_no_update = combined_df_no_update.drop_duplicates()
 
+        # Add the 'Last Update' column back
         combined_df = combined_df_no_update.join(combined_df["Last Update"])
 
         combined_df.to_csv(out_path, mode="w", index=False)

@@ -1,4 +1,3 @@
-# pathway_indexer/parser.py
 import os
 import shutil
 
@@ -108,9 +107,9 @@ def process_modified_files(input_directory, out_folder, metadata_csv, excluded_d
     """
     Process modified files and associate metadata with Markdown files.
     """
-    # This check for subdirectories is fine as you've implemented it.
+    # check for subdirectories too
     if is_directory_empty(input_directory, ["html", "pdf"]):
-        print("No modified files found in html or pdf subdirectories; skipping file processing.")
+        print("No modified files found; skipping file processing.")
         return
 
     print("Starting file processing for modified files...")
@@ -125,7 +124,6 @@ def process_modified_files(input_directory, out_folder, metadata_csv, excluded_d
         with open(excluded_domains_path, encoding="UTF-8") as f:
             excluded_domains = f.read().splitlines()
 
-    # --- THIS IS THE FIX ---
     # The 'metadata_csv' variable (which defaults to "all_links.csv") holds the correct filename.
     # We must use it here instead of hardcoding a different path.
     all_links_path = os.path.join(DATA_PATH, metadata_csv)

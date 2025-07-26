@@ -555,17 +555,14 @@ def run_pipeline(documents, splitter, embed_model, vector_store, include_prev_ne
     )
     nodes = pipeline.run(documents=documents, show_progress=False)
 
-    # --- THIS IS THE FIX YOU MUST IMPLEMENT ---
+    # prevent the crash if no nodes are generated.
     if nodes:
         _process_nodes_metadata(nodes, include_prev_next_rel)
         _update_node_context_and_sequence(nodes)
-        # (All the existing code for processing nodes goes here)
-        # ...
         index.insert_nodes(nodes)
         print(f"Nodes inserted: {len(nodes)}")
     else:
         print("⚠️ Warning: No nodes were generated from the documents. Nothing to insert into Pinecone.")
-    # --- END OF FIX ---
 
     return index, nodes
 

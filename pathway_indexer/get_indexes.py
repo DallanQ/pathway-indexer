@@ -1,3 +1,4 @@
+import asyncio
 import csv
 import os
 
@@ -12,7 +13,6 @@ from utils.indexes import (
     get_services_links,
 )
 from utils.tools import generate_hash_filename
-import asyncio
 
 dotenv.load_dotenv()
 
@@ -55,10 +55,10 @@ def get_indexes():
     HELP_SELECTOR = "#articleList"
 
     # # Crawling Process
-    # acm_data = crawl_index(ACM_URL, acm_selectors)
-    # print("Acm data collected!")
-    # print(f"Lenght of acm data: {len(acm_data)}")
-    # print()
+    acm_data = crawl_index(ACM_URL, acm_selectors)
+    print("Acm data collected!")
+    print(f"Lenght of acm data: {len(acm_data)}")
+    print()
 
     missionary_data = crawl_index(MISSIONARY_URL, missionary_selectors)
     print("Missionary data collected!")
@@ -78,36 +78,40 @@ def get_indexes():
     # Save the data
     with open(acm_path, "w", newline="", encoding="UTF-8") as csvfile:
         writer = csv.writer(csvfile)
-        writer.writerow(["Section", "Subsection", "Title", "URL"])
-        # writer.writerows(acm_data)
+        writer.writerow(["Section", "Subsection", "Title", "URL", "Role"])
+        for row in acm_data:
+            writer.writerow([*row, "ACM"])
 
     with open(missionary_path, "w", newline="", encoding="UTF-8") as csvfile:
         writer = csv.writer(csvfile)
         # write headers
-        writer.writerow(["Section", "Subsection", "Title", "URL"])
-        writer.writerows(missionary_data[2:])
+        writer.writerow(["Section", "Subsection", "Title", "URL", "Role"])
+        for row in missionary_data[2:]:
+            writer.writerow([*row, "missionary"])
 
     with open(help_path, "w", newline="", encoding="UTF-8") as csvfile:
         writer = csv.writer(csvfile)
-        writer.writerow(["Section", "Subsection", "Title", "URL"])
-        writer.writerows(help_data)
+        writer.writerow(["Section", "Subsection", "Title", "URL", "Role"])
+        for row in help_data:
+            writer.writerow([*row, "missionary"])
 
     with open(student_services_path, "w", newline="", encoding="UTF-8") as csvfile:
         writer = csv.writer(csvfile)
-        writer.writerow(["Section", "Subsection", "Title", "URL"])
-        writer.writerows(student_services_data)
+        writer.writerow(["Section", "Subsection", "Title", "URL", "Role"])
+        for row in student_services_data:
+            writer.writerow([*row, "missionary"])
 
     # *****Create the final dataframe*****
 
     index_path = os.path.join(DATA_PATH, "index")
 
     # Load the data into Dataframes
-    # df = pd.read_csv(f"{index_path}/acm.csv")
+    df = pd.read_csv(f"{index_path}/acm.csv")
     df2 = pd.read_csv(f"{index_path}/missionary.csv")
     df3 = pd.read_csv(f"{index_path}/help.csv")
     df4 = pd.read_csv(f"{index_path}/student_services.csv")
 
-    df = pd.concat([df2, df3, df4], ignore_index=True)  # df removed
+    df = pd.concat([df, df2, df3, df4], ignore_index=True)
 
     df.fillna("Missing", inplace=True)
 
@@ -115,15 +119,7 @@ def get_indexes():
     df["URL"] = df["URL"].str.split("#").str[0]
 
     df_merged = (
-        df.groupby("URL")
-        .agg(
-            {
-                "Section": list,
-                "Subsection": list,
-                "Title": list,
-            }
-        )
-        .reset_index()
+        df.groupby("URL").agg({"Section": list, "Subsection": list, "Title": list, "Role": "first"}).reset_index()
     )
 
     ## add a final column with the hash filename

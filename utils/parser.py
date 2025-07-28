@@ -74,11 +74,11 @@ def clean_markdown(text):
     text = re.sub(r"^\| Information \|\n", "", text, flags=re.MULTILINE)
     text = re.sub(r"\*\s*(Home|Knowledge Base - Home|KA-\d+)\s*\n", "", text)
     text = re.sub(
-        r"(You’re offline.*?Knowledge Articles|Contoso, Ltd\.|BYU-Pathway Worldwide|Toggle navigation[.\w\s\*\+\-\:]+|Search Filter|Search\n|Knowledge Article Key:)",
+        r"(You're offline.*?Knowledge Articles|Contoso, Ltd\.|BYU-Pathway Worldwide|Toggle navigation[.\w\s\*\+\-\:]+|Search Filter|Search\n|Knowledge Article Key:)",
         "",
         text,
     )
-    text = re.sub(r"You’re offline\. This is a read only version of the page\.", "", text)
+    text = re.sub(r"You're offline\. This is a read only version of the page\.", "", text)
 
     # Others regular expressions to remove unnecessary text
     # Remove empty headers
@@ -269,7 +269,6 @@ def convert_html_to_markdown(file_path, out_folder):
 
     print(f"Converted HTML to TXT and saved to: {file_out}")
 
-
     return file_out, title_tag
 
 
@@ -320,13 +319,15 @@ def create_file_extractor(parse_type="pdf"):
     file_extractor = {".txt": parser}
     return file_extractor
 
+
 def has_markdown_tables(content):
     """Check if content contains markdown tables"""
     table_patterns = [
-        r'\|.*\|.*\|',          # Table row with cells
-        r'\|[\s-]*\|[\s-]*\|'   # Table header separator
+        r"\|.*\|.*\|",  # Table row with cells
+        r"\|[\s-]*\|[\s-]*\|",  # Table header separator
     ]
     return all(re.search(pattern, content, re.MULTILINE) for pattern in table_patterns)
+
 
 def parse_txt_to_md(file_path, file_extension, title_tag=""):
     """
@@ -337,7 +338,6 @@ def parse_txt_to_md(file_path, file_extension, title_tag=""):
     with open(file_path, encoding="utf-8") as f:
         content = f.read()
 
-        
     if not has_markdown_tables(content):
         documents = SimpleDirectoryReader(
             input_files=[file_path], file_extractor=create_file_extractor(file_extension)
@@ -368,7 +368,7 @@ def parse_txt_to_md(file_path, file_extension, title_tag=""):
     return is_empty
 
 
-def associate_markdown_with_metadata(data_path, markdown_dirs, csv_file, excluded_domains):
+def associate_markdown_with_metadata(markdown_dirs, csv_file, excluded_domains):
     """
     Associates Markdown files with metadata from a CSV file.
 
@@ -379,13 +379,10 @@ def associate_markdown_with_metadata(data_path, markdown_dirs, csv_file, exclude
     Returns:
     - dict: Mapping of Markdown file paths to their corresponding metadata.
     """
-    # create the csv_path and open it, the data_path is related to the root but has
-    csv_path = os.path.join(data_path, csv_file)
-
     all_files = get_files(markdown_dirs)
     # Read the CSV file and store the file paths, URLs, headings, and subheadings in a dictionary
     file_metadata_mapping = {}
-    with open(csv_path, newline="", encoding="utf-8") as file:
+    with open(csv_file, newline="", encoding="utf-8") as file:
         reader = csv.DictReader(file)
         for row in reader:
             # Extract the filename without the extension and use it as the key
@@ -398,6 +395,7 @@ def associate_markdown_with_metadata(data_path, markdown_dirs, csv_file, exclude
                 "heading": clean_text(row["Section"]),
                 "subheading": (clean_text(row["Subsection"]) if clean_text(row["Subsection"]) != "Missing" else ""),
                 "title": clean_text(row["Title"]),
+                "role": row["Role"],
             }
 
     # Now go through the markdown files in each directory and associate them with the metadata
@@ -450,7 +448,7 @@ def associate_markdown_with_metadata(data_path, markdown_dirs, csv_file, exclude
             no_metadata.append(markdown_path)
 
     # Guardamos en CSV las rutas de Markdown sin metadata
-    no_metadata_csv_path = os.path.join(data_path, "no_metadata.csv")
+    no_metadata_csv_path = os.path.join(os.path.dirname(csv_file), "no_metadata.csv")
     with open(no_metadata_csv_path, mode="w", newline="", encoding="utf-8") as nm_file:
         writer = csv.writer(nm_file)
         writer.writerow(["markdown_path"])

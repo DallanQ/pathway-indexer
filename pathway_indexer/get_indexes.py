@@ -54,25 +54,25 @@ def get_indexes():
 
     HELP_SELECTOR = "#articleList"
 
-    # # Crawling Process
+    # Crawling Process
     acm_data = crawl_index(ACM_URL, acm_selectors)
-    print("Acm data collected!")
-    print(f"Lenght of acm data: {len(acm_data)}")
+    print("ACM data collected!")
+    print(f"Length of acm data: {len(acm_data)}")
     print()
 
     missionary_data = crawl_index(MISSIONARY_URL, missionary_selectors)
     print("Missionary data collected!")
-    print(f"Lenght of missionary data: {len(missionary_data)}")
+    print(f"Length of missionary data: {len(missionary_data)}")
     print()
 
     help_data = asyncio.run(get_help_links(HELP_URL, HELP_SELECTOR))
     print("Help data collected!")
-    print(f"Lenght of help data: {len(help_data)}")
+    print(f"Length of help data: {len(help_data)}")
     print()
 
     student_services_data = asyncio.run(get_services_links(STUDENT_SERVICES_URL))
     print("Student Services data collected!")
-    print(f"Lenght of Student Services data: {len(student_services_data)}")
+    print(f"Length of Student Services data: {len(student_services_data)}")
     print()
 
     # Save the data
@@ -119,7 +119,14 @@ def get_indexes():
     df["URL"] = df["URL"].str.split("#").str[0]
 
     df_merged = (
-        df.groupby("URL").agg({"Section": list, "Subsection": list, "Title": list, "Role": "first"}).reset_index()
+        df.groupby("URL")
+        .agg({
+            "Section": list,
+            "Subsection": list,
+            "Title": list,
+            "Role": "first",
+        })
+        .reset_index()
     )
 
     ## add a final column with the hash filename

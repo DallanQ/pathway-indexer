@@ -320,59 +320,66 @@ def create_file_extractor(parse_type="pdf"):
     return file_extractor
 
 
+def has_markdown_tables(content):
+    """Check if content contains markdown tables"""
+    table_patterns = [
+        r"\|.*\|.*\|",  # Table row with cells
+        r"\|[\s-]*\|[\s-]*\|",  # Table header separator
+    ]
+    return all(re.search(pattern, content, re.MULTILINE) for pattern in table_patterns)
+
+
 def parse_txt_to_md(file_path, file_extension, title_tag=""):
     """
-    Parses a .txt file to a Markdown (.md) file.
-    It first checks if the content is already well-formed.
-    If not, it uses LlamaParse.
+    Parses a .txt file to a Markdown (.md) file using LlamaParse.
     """
+    # get the file extension
+
     with open(file_path, encoding="utf-8") as f:
-        content = f.read().strip()
+        content = f.read()
 
-    out_name = file_path.replace(".txt", ".md")
-    title_tag = clean_title(title_tag)
-
-    # Heuristic to check if content is already good markdown
-    # If it contains markdown headers and is not empty, we trust it.
-    if content and "##" in content:
-        print(f"Content in {os.path.basename(file_path)} looks good. Bypassing LlamaParse.")
-        final_content = content
+    if not has_markdown_tables(content):
+        documents = SimpleDirectoryReader(
+            input_files=[file_path], file_extractor=create_file_extractor(file_extension)
+        ).load_data()
     else:
-        # If content is messy or empty, use LlamaParse
-        print(f"Content in {os.path.basename(file_path)} is messy or empty. Using LlamaParse.")
-        try:
-            # Note: has_markdown_tables logic was removed for simplicity,
-            # LlamaParse should handle tables correctly with the right prompt.
-            documents = SimpleDirectoryReader(
-                input_files=[file_path], file_extractor=create_file_extractor(file_extension)
-            ).load_data()
-            final_content = "\n\n".join([doc.text for doc in documents])
-        except Exception as e:
-            print(f"LlamaParse failed for {file_path}: {e}")
-            final_content = ""  # Ensure it's an empty string on failure
+        # save the content to a list of documents
+        documents = SimpleDirectoryReader(input_files=[file_path]).load_data()
 
-    # Check if the final content is empty
+    final_content = "\n\n".join([doc.text for doc in documents])
+
+    # If content from LlamaParse is empty, revert to original content
     if is_empty_content(final_content):
-        print(f"Final content for {os.path.basename(out_name)} is empty.")
+        final_content = content
+
+    # If the final content (even after reverting) is empty, then it's a failure
+    if is_empty_content(final_content):
+        print(f"Final content for {os.path.basename(file_path)} is empty. Moving to error.")
         return True  # True indicates failure/empty
 
-    # Write the final content to the .md file
+    # base_filename = os.path.basename(file_path)
+    out_name = file_path.replace(".txt", ".md")
+
+    title_tag = clean_title(title_tag)
+
+    # os.makedirs(os.path.dirname(out_name), exist_ok=True)
+
     with open(out_name, "w", encoding="utf-8") as f:
         if title_tag:
             f.write(f"title: {title_tag}\n")
         f.write(final_content)
+        print(f"Parsed TXT to MD and saved to: {out_name}")
 
-    print(f"Parsed TXT to MD and saved to: {out_name}")
-    return False  # False indicates success
+    return False
 
 
-def associate_markdown_with_metadata(markdown_dirs, csv_file, excluded_domains):
+def associate_markdown_with_metadata(markdown_dirs, csv_path, excluded_domains):
     """
     Associates Markdown files with metadata from a CSV file.
 
     Parameters:
     - markdown_dirs (list): List of directories containing Markdown files.
-    - csv_file (str): Path to the CSV file containing metadata.
+    - csv_path (str): Path to the CSV file containing metadata.
 
     Returns:
     - dict: Mapping of Markdown file paths to their corresponding metadata.
@@ -380,7 +387,7 @@ def associate_markdown_with_metadata(markdown_dirs, csv_file, excluded_domains):
     all_files = get_files(markdown_dirs)
     # Read the CSV file and store the file paths, URLs, headings, and subheadings in a dictionary
     file_metadata_mapping = {}
-    with open(csv_file, newline="", encoding="utf-8") as file:
+    with open(csv_path, newline="", encoding="utf-8") as file:
         reader = csv.DictReader(file)
         for row in reader:
             # Extract the filename without the extension and use it as the key
@@ -446,7 +453,7 @@ def associate_markdown_with_metadata(markdown_dirs, csv_file, excluded_domains):
             no_metadata.append(markdown_path)
 
     # Guardamos en CSV las rutas de Markdown sin metadata
-    no_metadata_csv_path = os.path.join(os.path.dirname(csv_file), "no_metadata.csv")
+    no_metadata_csv_path = os.path.join(os.path.dirname(csv_path), "no_metadata.csv")
     with open(no_metadata_csv_path, mode="w", newline="", encoding="utf-8") as nm_file:
         writer = csv.writer(nm_file)
         writer.writerow(["markdown_path"])

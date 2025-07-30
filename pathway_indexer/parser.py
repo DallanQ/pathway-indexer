@@ -123,9 +123,15 @@ def process_modified_files(input_directory, out_folder, metadata_csv, excluded_d
         with open(excluded_domains_path, encoding="UTF-8") as f:
             excluded_domains = f.read().splitlines()
 
-    metadata_dict = associate_markdown_with_metadata(
-        out_folder, os.path.join(input_directory, metadata_csv), excluded_domains
-    )
+    # The 'metadata_csv' variable (which defaults to "all_links.csv") holds the correct filename.
+    # We must use it here instead of hardcoding a different path.
+    all_links_path = os.path.join(DATA_PATH, metadata_csv)
+    if not os.path.exists(all_links_path):
+        print(f"Error: {all_links_path} not found. Cannot attach metadata.")
+        return
+
+    # Pass the correct CSV path to the function.
+    metadata_dict = associate_markdown_with_metadata(out_folder, all_links_path, excluded_domains)
     print("Metadata association completed.")
 
     print("Attaching metadata to Markdown files...")

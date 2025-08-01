@@ -1,3 +1,4 @@
+
 import csv
 import os
 
@@ -8,10 +9,14 @@ from utils.indexes import (
     Selectors,
     crawl_index,
     create_root_folders,
+    get_help_links,
+    get_services_links,
 )
 from utils.tools import generate_hash_filename
+import asyncio
 
 dotenv.load_dotenv()
+
 
 
 def get_indexes():

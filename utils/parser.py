@@ -8,7 +8,7 @@ import nest_asyncio
 import yaml
 from bs4 import BeautifulSoup
 from dotenv import load_dotenv
-from llama_index.core import SimpleDirectoryReader
+from llama_index.core import Document, SimpleDirectoryReader
 from llama_parse import LlamaParse
 from markdownify import markdownify as md
 from unstructured_client import UnstructuredClient
@@ -337,17 +337,33 @@ def parse_txt_to_md(file_path, file_extension, title_tag=""):
     with open(file_path, encoding="utf-8") as f:
         content = f.read()
 
-        
-    if not has_markdown_tables(content):
-        documents = SimpleDirectoryReader(
-            input_files=[file_path], file_extractor=create_file_extractor(file_extension)
-        ).load_data()
+    # If the source was HTML, the .txt file is already good markdown.
+    # We can skip LlamaParse which can be too aggressive.
+    if file_extension == ".html":
+        raw_documents = [Document(text=content)]
     else:
-        # save the content to a list of documents
-        documents = SimpleDirectoryReader(input_files=[file_path]).load_data()
+        print(f"Attempting LlamaParse for file: {file_path}")
+        try:
+            #get the file extension
+            file_extractor = create_file_extractor(file_extension)
+            documents = SimpleDirectoryReader(
+                    input_files=[file_path], file_extractor=file_extractor
+                ).load_data()
+            is_empty = all(is_empty_content(doc.text) for doc in documents)
+            if is_empty:
+                print(f"LlamaParse returned empty document for {file_path}, falling back to original text.")
+                documents = [Document(text=content)]
+    
+                
+        except Exception as e:
+            print(f"LlamaParse failed for {file_path}: {e}, falling back to original text.")
+            documents = [Document(text=content)]
+        
+            
 
     # size = sum([len(doc.text) for doc in documents])
     # validate if the content is empty
+
     is_empty = all(is_empty_content(doc.text) for doc in documents)
 
     # base_filename = os.path.basename(file_path)
@@ -398,6 +414,7 @@ def associate_markdown_with_metadata(data_path, markdown_dirs, csv_file, exclude
                 "heading": clean_text(row["Section"]),
                 "subheading": (clean_text(row["Subsection"]) if clean_text(row["Subsection"]) != "Missing" else ""),
                 "title": clean_text(row["Title"]),
+                "role": row["role"],
             }
 
     # Now go through the markdown files in each directory and associate them with the metadata
@@ -541,7 +558,7 @@ def process_file(file_path, out_folder):
         # try a maximum of 3 times to parse the txt file to md
         for _ in range(3):
             is_empty = parse_txt_to_md(txt_file_path, file_extension, title_tag)
-            if not is_empty:
+            if txt_file_path and not is_empty:
                 # remove the txt file
                 os.remove(txt_file_path)
                 return
@@ -550,8 +567,9 @@ def process_file(file_path, out_folder):
 
     # move the txt file to the error folder
     error_folder = os.path.join(out_folder, "error")
-    os.rename(txt_file_path, os.path.join(error_folder, os.path.basename(txt_file_path)))  # moving the file
-    print(f"Error parsing TXT file to MD. Moved to {error_folder}")
+    if txt_file_path:
+        os.rename(txt_file_path, os.path.join(error_folder, os.path.basename(txt_file_path)))  # moving the file
+        print(f"Error parsing TXT file to MD. Moved to {error_folder}")
 
 
 def process_directory(origin_path, out_folder):

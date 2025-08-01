@@ -103,11 +103,11 @@ async def crawl_csv(df, base_dir, output_file="output_data.csv"):
     output_data = []
 
     async def process_row(row):
-        url = row[0]
-        heading = row[1]
-        sub_heading = row[2]
-        title = row[3]
-        filename = row[4]
+        url = row["URL"]
+        heading = row["Section"]
+        sub_heading = row["Subsection"]
+        title = row["Title"]
+        filename = row["filename"]
 
         if "sharepoint.com" in url or url == "https://www.byupathway.edu/pathwayconnect-block-academic-calendar":
             return

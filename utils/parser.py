@@ -340,7 +340,7 @@ def parse_txt_to_md(file_path, file_extension, title_tag=""):
     # If the source was HTML, the .txt file is already good markdown.
     # We can skip LlamaParse which can be too aggressive.
     if file_extension == ".html":
-        raw_documents = [Document(text=content)]
+        documents = [Document(text=content)]
     else:
         print(f"Attempting LlamaParse for file: {file_path}")
         try:

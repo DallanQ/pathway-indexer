@@ -334,6 +334,9 @@ def parse_txt_to_md(file_path, file_extension, title_tag=""):
     """
     # get the file extension
 
+    global llama_parse_count
+    global indexed_count
+
     with open(file_path, encoding="utf-8") as f:
         content = f.read()
 
@@ -341,6 +344,7 @@ def parse_txt_to_md(file_path, file_extension, title_tag=""):
     try:
         #get the file extension
         file_extractor = create_file_extractor(file_extension)
+        llama_parse_count += 1
         documents = SimpleDirectoryReader(
                 input_files=[file_path], file_extractor=file_extractor
             ).load_data()
@@ -373,6 +377,7 @@ def parse_txt_to_md(file_path, file_extension, title_tag=""):
             f.write(doc.text)
             f.write("\n\n")
         print(f"Parsed TXT to MD and saved to: {out_name}")
+        indexed_count += 1
 
     return is_empty
 
@@ -569,6 +574,12 @@ def process_directory(origin_path, out_folder):
     """
     Processes all HTML and PDF files in the specified directory.
     """
+    global llama_parse_count
+    llama_parse_count = 0
+
+    global indexed_count
+    indexed_count = 0
+
     for root, _dirs, files in os.walk(origin_path):
         if "error" in root:
             continue
@@ -577,6 +588,11 @@ def process_directory(origin_path, out_folder):
                 file_path = os.path.join(root, file)
                 print(f"Processing file: {file_path}")
                 process_file(file_path, out_folder)
+    
+    print("\n--- Crawl Summary ---")
+    print(f"Documents sent to LlamaParse: {llama_parse_count}")
+    print(f"Documents successfully indexed: {indexed_count}")
+    print("---------------------\n")
 
 
 def add_titles_tag(input_directory, out_folder):

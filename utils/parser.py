@@ -337,29 +337,22 @@ def parse_txt_to_md(file_path, file_extension, title_tag=""):
     with open(file_path, encoding="utf-8") as f:
         content = f.read()
 
-    # If the source was HTML, the .txt file is already good markdown.
-    # We can skip LlamaParse which can be too aggressive.
-    if file_extension == ".html":
-        documents = [Document(text=content)]
-    else:
-        print(f"Attempting LlamaParse for file: {file_path}")
-        try:
-            #get the file extension
-            file_extractor = create_file_extractor(file_extension)
-            documents = SimpleDirectoryReader(
-                    input_files=[file_path], file_extractor=file_extractor
-                ).load_data()
-            is_empty = all(is_empty_content(doc.text) for doc in documents)
-            if is_empty:
-                print(f"LlamaParse returned empty document for {file_path}, falling back to original text.")
-                documents = [Document(text=content)]
-    
-                
-        except Exception as e:
-            print(f"LlamaParse failed for {file_path}: {e}, falling back to original text.")
+    print(f"Attempting LlamaParse for file: {file_path}")
+    try:
+        #get the file extension
+        file_extractor = create_file_extractor(file_extension)
+        documents = SimpleDirectoryReader(
+                input_files=[file_path], file_extractor=file_extractor
+            ).load_data()
+        is_empty = all(is_empty_content(doc.text) for doc in documents)
+        if is_empty:
+            print(f"LlamaParse returned empty document for {file_path}, falling back to original text.")
             documents = [Document(text=content)]
         
-            
+
+    except Exception as e:
+        print(f"LlamaParse failed for {file_path}: {e}, falling back to original text.")
+        documents = [Document(text=content)]
 
     # size = sum([len(doc.text) for doc in documents])
     # validate if the content is empty

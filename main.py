@@ -44,7 +44,7 @@ def main():
     print("===>Copying output CSV...\n")
     copy_output_csv(DATA_PATH, output_data_path)
 
-        end_time = time.time()
+    end_time = time.time()
     duration = end_time - start_time
     minutes = int(duration // 60)
     seconds = int(duration % 60)

@@ -23,6 +23,9 @@ logging.basicConfig(level=logging.WARNING)
 nest_asyncio.apply()
 load_dotenv()
 
+llama_parse_count = 0
+indexed_count = 0
+
 
 def clean_title(title):
     # replace enters with spaces
@@ -333,6 +336,8 @@ def parse_txt_to_md(file_path, file_extension, title_tag=""):
     Parses a .txt file to a Markdown (.md) file using LlamaParse.
     """
     # get the file extension
+    global llama_parse_count
+    global indexed_count
 
     with open(file_path, encoding="utf-8") as f:
         content = f.read()
@@ -342,6 +347,7 @@ def parse_txt_to_md(file_path, file_extension, title_tag=""):
         documents = SimpleDirectoryReader(
             input_files=[file_path], file_extractor=create_file_extractor(file_extension)
         ).load_data()
+        llama_parse_count += 1
     else:
         # save the content to a list of documents
         documents = SimpleDirectoryReader(input_files=[file_path]).load_data()
@@ -364,7 +370,7 @@ def parse_txt_to_md(file_path, file_extension, title_tag=""):
             f.write(doc.text)
             f.write("\n\n")
         print(f"Parsed TXT to MD and saved to: {out_name}")
-
+        indexed_count += 1
     return is_empty
 
 
@@ -558,6 +564,10 @@ def process_directory(origin_path, out_folder):
     """
     Processes all HTML and PDF files in the specified directory.
     """
+    global llama_parse_count, indexed_count
+    llama_parse_count = 0
+    indexed_count = 0
+
     for root, _dirs, files in os.walk(origin_path):
         if "error" in root:
             continue
@@ -566,6 +576,8 @@ def process_directory(origin_path, out_folder):
                 file_path = os.path.join(root, file)
                 print(f"Processing file: {file_path}")
                 process_file(file_path, out_folder)
+    
+    return llama_parse_count, indexed_count
 
 
 def add_titles_tag(input_directory, out_folder):

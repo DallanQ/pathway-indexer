@@ -31,11 +31,12 @@ def main():
     crawl_data()
 
     print("===>Starting parser...\n")
-    llama_parse_count, indexed_count = parse_files_to_md(last_data_json=last_data_json)
+    llama_parse_count, indexed_count, empty_files_count = parse_files_to_md(last_data_json=last_data_json)
 
     print("\n--- Parser Summary ---")
     print(f"Documents sent to LlamaParse: {llama_parse_count}")
     print(f"Documents successfully indexed: {indexed_count}")
+    print(f"Documents that came back empty: {empty_files_count}")
     print("----------------------\n")
 
     print("===>Updating crawl timestamp...\n")

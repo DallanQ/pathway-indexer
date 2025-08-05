@@ -331,13 +331,14 @@ def has_markdown_tables(content):
     ]
     return all(re.search(pattern, content, re.MULTILINE) for pattern in table_patterns)
 
-def parse_txt_to_md(file_path, file_extension, title_tag=""):
+def parse_txt_to_md(file_path, file_extension, title_tag="", nodes_log_path="data/nodes_log.csv"):
     """
     Parses a .txt file to a Markdown (.md) file using LlamaParse.
     """
     # get the file extension
     global llama_parse_count
     global indexed_count
+    global empty_files_count
 
     with open(file_path, encoding="utf-8") as f:
         content = f.read()
@@ -355,6 +356,8 @@ def parse_txt_to_md(file_path, file_extension, title_tag=""):
     # size = sum([len(doc.text) for doc in documents])
     # validate if the content is empty
     is_empty = all(is_empty_content(doc.text) for doc in documents)
+    if is_empty:
+        empty_files_count += 1
 
     # base_filename = os.path.basename(file_path)
     out_name = file_path.replace(".txt", ".md")
@@ -371,6 +374,12 @@ def parse_txt_to_md(file_path, file_extension, title_tag=""):
             f.write("\n\n")
         print(f"Parsed TXT to MD and saved to: {out_name}")
         indexed_count += 1
+
+    # Log the number of nodes generated for the file
+    with open(nodes_log_path, "a", newline="", encoding="utf-8") as f:
+        writer = csv.writer(f)
+        writer.writerow([file_path, len(documents)])
+
     return is_empty
 
 
@@ -560,13 +569,19 @@ def process_file(file_path, out_folder):
     print(f"Error parsing TXT file to MD. Moved to {error_folder}")
 
 
-def process_directory(origin_path, out_folder):
+def process_directory(origin_path, out_folder, nodes_log_path="data/nodes_log.csv"):
     """
     Processes all HTML and PDF files in the specified directory.
     """
-    global llama_parse_count, indexed_count
+    global llama_parse_count, indexed_count, empty_files_count
     llama_parse_count = 0
     indexed_count = 0
+    empty_files_count = 0
+
+    # Initialize the nodes log file
+    with open(nodes_log_path, "w", newline="", encoding="utf-8") as f:
+        writer = csv.writer(f)
+        writer.writerow(["file_path", "nodes_generated"])
 
     for root, _dirs, files in os.walk(origin_path):
         if "error" in root:
@@ -577,7 +592,7 @@ def process_directory(origin_path, out_folder):
                 print(f"Processing file: {file_path}")
                 process_file(file_path, out_folder)
     
-    return llama_parse_count, indexed_count
+    return llama_parse_count, indexed_count, empty_files_count
 
 
 def add_titles_tag(input_directory, out_folder):

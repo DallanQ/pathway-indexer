@@ -588,11 +588,7 @@ def process_directory(origin_path, out_folder):
                 file_path = os.path.join(root, file)
                 print(f"Processing file: {file_path}")
                 process_file(file_path, out_folder)
-    
-    print("\n--- Crawl Summary ---")
-    print(f"Documents sent to LlamaParse: {llama_parse_count}")
-    print(f"Documents successfully indexed: {indexed_count}")
-    print("---------------------\n")
+    return llama_parse_count, indexed_count
 
 
 def add_titles_tag(input_directory, out_folder):

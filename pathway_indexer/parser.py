@@ -37,14 +37,16 @@ def parse_files_to_md(
     files_to_process = analyze_file_changes(
         output_data_path, last_output_data_path, out_folder, last_data_json
     )
+    llama_parse_count, indexed_count = 0, 0
     if not files_to_process.empty:
-        process_modified_files(
+        llama_parse_count, indexed_count = process_modified_files(
             input_directory, out_folder, metadata_csv, excluded_domains_path
         )
 
     # Save current_df as last_output_data.csv for next run
     # files_to_process.drop(columns=["HasChanged"], inplace=True)
     print("All tasks completed successfully.")
+    return llama_parse_count, indexed_count
 
 
 def analyze_file_changes(
@@ -126,10 +128,10 @@ def process_modified_files(
     """
     if is_directory_empty(input_directory):
         print("No modified files found; skipping file processing.")
-        return
+        return 0, 0
 
     print("Starting file processing for modified files...")
-    process_directory(input_directory, out_folder) # convert the files to md
+    llama_parse_count, indexed_count = process_directory(input_directory, out_folder)  # convert the files to md
     print("File processing for modified files completed.")
 
     add_titles_tag(input_directory, out_folder)
@@ -151,6 +153,8 @@ def process_modified_files(
 
     print("Processing special formats...")
     calendar_format(input_directory, metadata_csv)
+
+    return llama_parse_count, indexed_count
 
 
 def is_directory_empty(directory_path):

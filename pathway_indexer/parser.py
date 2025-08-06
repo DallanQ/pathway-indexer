@@ -130,7 +130,11 @@ def process_modified_files(
         return 0, 0, 0
 
     print("Starting file processing for modified files...")
-    llama_parse_count, indexed_count, empty_files_count = process_directory(input_directory, out_folder)  # convert the files to md
+    nodes_log_path = os.path.join(DATA_PATH, "nodes_log.csv")
+    nodes_csv_path = os.path.join(DATA_PATH, "nodes.csv")
+    llama_parse_count, indexed_count, empty_files_count = process_directory(
+        input_directory, out_folder, nodes_log_path, nodes_csv_path
+    )  # convert the files to md
     print("File processing for modified files completed.")
 
     add_titles_tag(input_directory, out_folder)

@@ -328,7 +328,7 @@ def has_markdown_tables(content):
     ]
     return all(re.search(pattern, content, re.MULTILINE) for pattern in table_patterns)
 
-def parse_txt_to_md(file_path, file_extension, title_tag="", nodes_log_path="data/nodes_log.csv"):
+def parse_txt_to_md(file_path, file_extension, title_tag="", nodes_log_path="data/nodes_log.csv", nodes_csv_path="data/nodes.csv"):
     """
     Parses a .txt file to a Markdown (.md) file using LlamaParse.
     """
@@ -385,6 +385,12 @@ def parse_txt_to_md(file_path, file_extension, title_tag="", nodes_log_path="dat
     with open(nodes_log_path, "a", newline="", encoding="utf-8") as f:
         writer = csv.writer(f)
         writer.writerow([file_path, len(documents)])
+
+    # Log the nodes to a CSV file
+    with open(nodes_csv_path, "a", newline="", encoding="utf-8") as f:
+        writer = csv.writer(f)
+        for doc in documents:
+            writer.writerow([file_path, doc.text])
 
     return is_empty
 
@@ -577,7 +583,7 @@ def process_file(file_path, out_folder):
         print(f"Error parsing TXT file to MD. Moved to {error_folder}")
 
 
-def process_directory(origin_path, out_folder, nodes_log_path="data/nodes_log.csv"):
+def process_directory(origin_path, out_folder, nodes_log_path="data/nodes_log.csv", nodes_csv_path="data/nodes.csv"):
     """
     Processes all HTML and PDF files in the specified directory.
     """
@@ -594,6 +600,11 @@ def process_directory(origin_path, out_folder, nodes_log_path="data/nodes_log.cs
     with open(nodes_log_path, "w", newline="", encoding="utf-8") as f:
         writer = csv.writer(f)
         writer.writerow(["file_path", "nodes_generated"])
+
+    # Initialize the nodes CSV file
+    with open(nodes_csv_path, "w", newline="", encoding="utf-8") as f:
+        writer = csv.writer(f)
+        writer.writerow(["file_path", "node_text"])
 
     for root, _dirs, files in os.walk(origin_path):
         if "error" in root:

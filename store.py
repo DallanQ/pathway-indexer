@@ -260,4 +260,4 @@ def main():
 
 
 if __name__ == "__main__":
-    index, retriever, nodes = main()
+    index, retriever, nodes, total_nodes_generated, average_nodes_per_file, files_with_zero_nodes, files_with_one_node, files_with_more_than_one_node, node_counts_csv_path = main()

@@ -153,7 +153,7 @@ def clean_html(soup):
         title_header.string = title_text
         content.insert(0, title_header)
 
-    return content or soup  # Return the cleaned content or the entire soup as a fallback
+    return content or soup  # Return the cleaned content or the entire soup as a last resort
 
 
 def clean_text(text):
@@ -694,13 +694,13 @@ def process_file(file_path, out_folder, stats, empty_llamaparse_files_counted, d
             if not is_empty:
                 # remove the txt file
                 os.remove(txt_file_path)
-                stats["documents_rescued_by_fallback"] += 1
+                stats["documents_successful_after_retries"] += 1
                 log_entry = {
                     "timestamp": datetime.datetime.now().isoformat(),
                     "stage": "parse",
                     "filepath": file_path,
-                    "status": "LLAMAPARSE_SUCCESS_OR_FALLBACK_RESCUED",
-                    "reason": "LlamaParse produced content or fallback was successful.",
+                    "status": "LLAMAPARSE_SUCCESS_OR_RETRY_SUCCEEDED",
+                    "reason": "LlamaParse produced content or retry was successful.",
                 }
                 if detailed_log_path:
                     with open(detailed_log_path, "a") as f:
@@ -719,13 +719,13 @@ def process_file(file_path, out_folder, stats, empty_llamaparse_files_counted, d
                     f.write(json.dumps(log_entry) + "\n")
             time.sleep(4)
 
-    stats["documents_failed_after_fallback"] += 1
+    stats["documents_failed_after_retries"] += 1
     log_entry = {
         "timestamp": datetime.datetime.now().isoformat(),
         "stage": "parse",
         "filepath": file_path,
-        "status": "FAILED_AFTER_ALL_FALLBACKS",
-        "reason": "Document could not be processed after all LlamaParse retries and fallbacks.",
+        "status": "FAILED_AFTER_ALL_RETRIES",
+        "reason": "Document could not be processed after all LlamaParse retries.",
     }
     if detailed_log_path:
         with open(detailed_log_path, "a") as f:

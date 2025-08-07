@@ -47,8 +47,8 @@ def main():
         "unique_files_processed": 0,
         "documents_sent_to_llamaparse": 0,
         "documents_empty_from_llamaparse": 0,
-        "documents_rescued_by_fallback": 0,
-        "documents_failed_after_fallback": 0,
+        "documents_successful_after_retries": 0,  # formerly rescued_by_fallback
+        "documents_failed_after_retries": 0,      # formerly failed_after_fallback
         "md_files_generated": 0,
         "files_with_only_metadata": 0,
         "files_processed_outside_change_detection": 0,
@@ -62,6 +62,7 @@ def main():
     # Initialize detailed log file
     with open(detailed_log_path, "w") as f:
         f.write("")  # Clear content from previous runs
+    print(f"Detailed pipeline log will be saved to: {os.path.abspath(detailed_log_path)}")
 
     print("Initializing JSON file...")
     last_data_json = initialize_json_file(detail_json_path, output_data_path)
@@ -101,6 +102,7 @@ def main():
 
     print("===>Process completed")
     print(json.dumps(stats, indent=4))
+    print(f"Node counts per file saved to: {os.path.abspath(os.path.join(DATA_PATH, 'node_counts_log.json'))}")
 
 
 if __name__ == "__main__":

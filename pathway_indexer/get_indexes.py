@@ -103,14 +103,20 @@ def get_indexes():
 
     index_path = os.path.join(DATA_PATH, "index")
 
-    # Load the data into Dataframes
-    # df = pd.read_csv(f"{index_path}/acm.csv")
-    df2 = pd.read_csv(f"{index_path}/missionary.csv")
-    df3 = pd.read_csv(f"{index_path}/help.csv")
-    df4 = pd.read_csv(f"{index_path}/student_services.csv")
+    # Load only the index CSVs that exist
+    dfs = []
+    for fname in ["acm.csv", "missionary.csv", "help.csv", "student_services.csv"]:
+        fpath = os.path.join(index_path, fname)
+        if os.path.exists(fpath):
+            dfs.append(pd.read_csv(fpath))
+        else:
+            print(f"Skipping missing index file: {fpath}")
 
-    df = pd.concat([df2, df3, df4], ignore_index=True)  # df removed
+    if not dfs:
+        print("No index CSVs found. Exiting get_indexes().")
+        return
 
+    df = pd.concat(dfs, ignore_index=True)
     df.fillna("Missing", inplace=True)
 
     # remove from the urls, the # and everything after it

@@ -293,6 +293,7 @@ Node counts per file are logged for analysis.
         repo_root = os.path.dirname(os.path.abspath(__file__))
         rel_path = os.path.relpath(metrics_explanation_path, start=repo_root)
         print(f"\nWhat do these numbers mean? See ./{rel_path}")
+        del stats["node_counts_per_file"]
 
         return index, retriever, nodes
 

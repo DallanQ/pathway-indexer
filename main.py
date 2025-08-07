@@ -30,18 +30,15 @@ def main():
 
     print("Crawler Started...\n")
     total_documents_crawled, total_documents_failed_during_crawl = crawl_data()
-    total_documents_sent_for_parsing = total_documents_crawled - total_documents_failed_during_crawl
-
-    print("\n--- Crawler Summary ---")
-    print(f"Total documents crawled: {total_documents_crawled}")
-    print(f"Total documents failed during crawl: {total_documents_failed_during_crawl}")
-    print(f"Total documents sent for parsing: {total_documents_sent_for_parsing}")
-    print("-----------------------\n")
+    total_documents_sent_for_parsing = total_documents_crawled - total_documents_failed_during_crawl  
 
     print("===>Starting parser...\n")
     llama_parse_count, indexed_count, empty_files_count, documents_retried, documents_rescued_by_fallback, documents_failed_after_fallback, files_with_only_metadata, files_with_error_messages, files_with_empty_content = parse_files_to_md(last_data_json=last_data_json)
 
     print("\n--- Parser Summary ---")
+    print(f"Total documents crawled: {total_documents_crawled}")
+    print(f"Total documents failed during crawl: {total_documents_failed_during_crawl}")
+    print(f"Total documents sent for parsing: {total_documents_sent_for_parsing}")
     print(f"Documents sent to LlamaParse: {llama_parse_count}")
     print(f"Documents successfully indexed: {indexed_count}")
     print(f"Documents that came back empty: {empty_files_count}")

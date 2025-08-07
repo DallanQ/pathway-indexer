@@ -5,6 +5,7 @@ from llama_index.core import Document
 from llama_index.core.vector_stores.types import VectorStoreQueryMode
 from llama_index.embeddings.openai import OpenAIEmbedding
 from llama_index.vector_stores.pinecone import PineconeVectorStore
+import csv
 
 from utils.hyper_functions import AltNodeParser, extract_index_metadata, run_pipeline
 

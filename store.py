@@ -274,25 +274,25 @@ def main():
         del stats["node_counts_per_file"]
 
         # Append indexer metrics explanation to metrics_explanation.log
-        metrics_explanation_path = "metrics_explanation.log"
+        metrics_explanation_path = os.path.join(os.getenv("DATA_PATH"), "metrics_explanation.log")
         indexer_explanation = f"""
 Indexer Metrics
 
-Files list length: {len(stats["node_counts_per_file"])}
+➤ Files list length: {len(stats["node_counts_per_file"])}
 Number of markdown files loaded for indexing.
 
-Total nodes processed: {sum(stats["node_counts_per_file"].values())}
+➤ Total nodes processed: {sum(stats["node_counts_per_file"].values())}
 Number of nodes (chunks of content) created and indexed from the markdown files.
 
-Node counts per file saved to: node_counts_log.json
+➤ Node counts per file saved to: node_counts_log.json
 Node counts per file are logged for analysis.
 """
         with open(metrics_explanation_path, "a") as f:
             f.write(indexer_explanation)
-        # Print path relative to repo root
-        repo_root = os.path.dirname(os.path.abspath(__file__))
-        rel_path = os.path.relpath(metrics_explanation_path, start=repo_root)
+        # Print path relative to repo root, starting from DATA_PATH
+        rel_path = os.path.relpath(metrics_explanation_path, start=os.getcwd())
         print(f"\nWhat do these numbers mean? See ./{rel_path}")
+        # Delete node_counts_per_file after metrics explanation
         del stats["node_counts_per_file"]
 
         return index, retriever, nodes

@@ -37,9 +37,9 @@ def parse_files_to_md(
     files_to_process = analyze_file_changes(
         output_data_path, last_output_data_path, out_folder, last_data_json
     )
-    llama_parse_count, indexed_count, empty_files_count, documents_retried, documents_rescued_by_fallback, documents_failed_after_fallback = 0, 0, 0, 0, 0, 0
+    llama_parse_count, indexed_count, empty_files_count, documents_retried, documents_rescued_by_fallback, documents_failed_after_fallback, documents_sent_to_llamaparse_initial = 0, 0, 0, 0, 0, 0, 0
     if not files_to_process.empty:
-        llama_parse_count, indexed_count, empty_files_count, documents_retried, documents_rescued_by_fallback, documents_failed_after_fallback = process_modified_files(
+        llama_parse_count, indexed_count, empty_files_count, documents_retried, documents_rescued_by_fallback, documents_failed_after_fallback, documents_sent_to_llamaparse_initial = process_modified_files(
             input_directory, out_folder, metadata_csv, excluded_domains_path
         )
 
@@ -47,7 +47,7 @@ def parse_files_to_md(
     # files_to_process.drop(columns=["HasChanged"], inplace=True)
     print("All tasks completed successfully.")
     files_with_only_metadata, files_with_error_messages, files_with_empty_content = analyze_markdown_quality(out_folder)
-    return llama_parse_count, indexed_count, empty_files_count, documents_retried, documents_rescued_by_fallback, documents_failed_after_fallback, files_with_only_metadata, files_with_error_messages, files_with_empty_content
+    return llama_parse_count, indexed_count, empty_files_count, documents_retried, documents_rescued_by_fallback, documents_failed_after_fallback, files_with_only_metadata, files_with_error_messages, files_with_empty_content, documents_sent_to_llamaparse_initial
 
 def analyze_file_changes(
     output_data_path, last_output_data_path, out_folder, last_data_json

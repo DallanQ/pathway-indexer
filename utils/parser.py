@@ -340,6 +340,7 @@ def parse_txt_to_md(file_path, file_extension, title_tag=""):
     global documents_retried
     global documents_rescued_by_fallback
     global documents_failed_after_fallback
+    global documents_sent_to_llamaparse_initial
 
     with open(file_path, encoding="utf-8") as f:
         content = f.read()
@@ -350,6 +351,8 @@ def parse_txt_to_md(file_path, file_extension, title_tag=""):
         try:
             #get the file extension
             file_extractor = create_file_extractor(file_extension)
+            if i == 0:
+                documents_sent_to_llamaparse_initial += 1
             llama_parse_count += 1
             documents = SimpleDirectoryReader(
                     input_files=[file_path], file_extractor=file_extractor
@@ -381,7 +384,7 @@ def parse_txt_to_md(file_path, file_extension, title_tag=""):
 
     is_empty = all(is_empty_content(doc.text) for doc in documents)
     if is_empty:
-        documents_failed_after_after_fallback += 1
+        documents_failed_after_fallback += 1
 
     # base_filename = os.path.basename(file_path)
     out_name = file_path.replace(".txt", ".md")
@@ -612,6 +615,9 @@ def process_directory(origin_path, out_folder):
     global documents_failed_after_fallback
     documents_failed_after_fallback = 0
 
+    global documents_sent_to_llamaparse_initial
+    documents_sent_to_llamaparse_initial = 0
+
     for root, _dirs, files in os.walk(origin_path):
         if "error" in root:
             continue
@@ -620,7 +626,7 @@ def process_directory(origin_path, out_folder):
                 file_path = os.path.join(root, file)
                 print(f"Processing file: {file_path}")
                 process_file(file_path, out_folder)
-    return llama_parse_count, indexed_count, empty_files_count, documents_retried, documents_rescued_by_fallback, documents_failed_after_fallback
+    return llama_parse_count, indexed_count, empty_files_count, documents_retried, documents_rescued_by_fallback, documents_failed_after_fallback, documents_sent_to_llamaparse_initial
 
 
 def add_titles_tag(input_directory, out_folder):

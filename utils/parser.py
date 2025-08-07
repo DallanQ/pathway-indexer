@@ -328,7 +328,7 @@ def has_markdown_tables(content):
     ]
     return all(re.search(pattern, content, re.MULTILINE) for pattern in table_patterns)
 
-def parse_txt_to_md(file_path, file_extension, stats, title_tag=""):
+def parse_txt_to_md(file_path, file_extension, stats, empty_llamaparse_files_counted, title_tag=""):
     """
     Parses a .txt file to a Markdown (.md) file using LlamaParse.
     """
@@ -351,7 +351,9 @@ def parse_txt_to_md(file_path, file_extension, stats, title_tag=""):
     is_empty = all(is_empty_content(doc.text) for doc in documents)
 
     if is_empty:
-        stats["documents_empty_from_llamaparse"] += 1
+        if file_path not in empty_llamaparse_files_counted:
+            stats["documents_empty_from_llamaparse"] += 1
+            empty_llamaparse_files_counted.add(file_path)
 
     # base_filename = os.path.basename(file_path)
     out_name = file_path.replace(".txt", ".md")
@@ -514,7 +516,7 @@ def attach_metadata_to_markdown_directories(markdown_dirs, metadata_dict):
                 print(f"No metadata found for {file_path}. Skipping.")
 
 
-def process_file(file_path, out_folder, stats):
+def process_file(file_path, out_folder, stats, empty_llamaparse_files_counted):
     """
     Processes a file based on its extension: PDF or HTML.
     """
@@ -555,7 +557,7 @@ def process_file(file_path, out_folder, stats):
     if title_tag != "Error parsing.":
         # try a maximum of 3 times to parse the txt file to md
         for _ in range(3):
-            is_empty = parse_txt_to_md(txt_file_path, file_extension, stats, title_tag)
+            is_empty = parse_txt_to_md(txt_file_path, file_extension, stats, empty_llamaparse_files_counted, title_tag)
             if not is_empty:
                 # remove the txt file
                 os.remove(txt_file_path)
@@ -571,7 +573,7 @@ def process_file(file_path, out_folder, stats):
     print(f"Error parsing TXT file to MD. Moved to {error_folder}")
 
 
-def process_directory(origin_path, out_folder, stats):
+def process_directory(origin_path, out_folder, stats, empty_llamaparse_files_counted):
     """
     Processes all HTML and PDF files in the specified directory.
     """
@@ -582,7 +584,7 @@ def process_directory(origin_path, out_folder, stats):
             if file.lower().endswith((".html", ".pdf")):
                 file_path = os.path.join(root, file)
                 print(f"Processing file: {file_path}")
-                process_file(file_path, out_folder, stats)
+                process_file(file_path, out_folder, stats, empty_llamaparse_files_counted)
 
 
 def add_titles_tag(input_directory, out_folder):

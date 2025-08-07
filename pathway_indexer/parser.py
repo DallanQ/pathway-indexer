@@ -39,8 +39,9 @@ def parse_files_to_md(
         output_data_path, last_output_data_path, out_folder, last_data_json, stats
     )
     if not files_to_process.empty:
+        empty_llamaparse_files_counted = set()
         process_modified_files(
-            input_directory, out_folder, metadata_csv, excluded_domains_path, stats
+            input_directory, out_folder, metadata_csv, excluded_domains_path, stats, empty_llamaparse_files_counted
         )
 
     # Save current_df as last_output_data.csv for next run
@@ -122,7 +123,7 @@ def analyze_file_changes(
 
 
 def process_modified_files(
-    input_directory, out_folder, metadata_csv, excluded_domains_path, stats
+    input_directory, out_folder, metadata_csv, excluded_domains_path, stats, empty_llamaparse_files_counted
 ):
     """
     Process modified files and associate metadata with Markdown files.
@@ -132,7 +133,7 @@ def process_modified_files(
         return
 
     print("Starting file processing for modified files...")
-    process_directory(input_directory, out_folder, stats) # convert the files to md
+    process_directory(input_directory, out_folder, stats, empty_llamaparse_files_counted) # convert the files to md
     print("File processing for modified files completed.")
 
     add_titles_tag(input_directory, out_folder)

@@ -73,6 +73,8 @@ def main():
     crawl_data(stats, detailed_log_path)
 
     print("===>Starting parser...\n")
+    # Ensure the key exists before parsing
+    stats["files_processed_by_directory"] = 0
     parse_files_to_md(last_data_json=last_data_json, stats=stats, detailed_log_path=detailed_log_path)
     stats["files_processed_outside_change_detection"] = (
         stats["files_processed_by_directory"] - stats["unique_files_processed"]

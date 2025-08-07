@@ -94,10 +94,12 @@ def analyze_file_changes(output_data_path, last_output_data_path, out_folder, la
         dst_path = os.path.join(out_folder, "from_html", pathname)
 
         os.makedirs(os.path.dirname(dst_path), exist_ok=True)
-        # Copy unchanged file as .md in out_folder
-        if os.path.exists(src_path):
+        # Only copy if src_path and dst_path are different
+        if os.path.exists(src_path) and os.path.abspath(src_path) != os.path.abspath(dst_path):
             shutil.copyfile(src_path, dst_path)
             print(f"Copied {src_path} to {dst_path}")
+        elif os.path.exists(src_path):
+            print(f"Skipped copy: {src_path} and {dst_path} are the same file")
 
         # Remove unchanged file from input_directory
         if os.path.exists(row["Filepath"]):

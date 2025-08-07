@@ -1,4 +1,6 @@
 import os
+import time
+import json
 import dotenv
 from pinecone import Pinecone, ServerlessSpec
 from llama_index.core import Document
@@ -190,6 +192,17 @@ def main():
     """
     Main function to recreate the vector store and process documents.
     """
+    start_time = time.time()
+    stats = {
+        "total_nodes_generated": 0,
+        "average_nodes_per_file": 0,
+        "files_with_zero_nodes": 0,
+        "files_with_one_node": 0,
+        "files_with_more_than_one_node": 0,
+        "documents_indexed": 0,
+        "node_counts_per_file": {},
+    }
+
     try:
         print("Starting vector store recreation and document processing...")
         
@@ -217,7 +230,35 @@ def main():
         print(f"\n✅ Process completed successfully!")
         print(f"   - Total nodes processed: {len(nodes)}")
         print(f"   - Vector store ready for queries")
+
+        stats["total_nodes_generated"] = len(nodes)
+        stats["documents_indexed"] = len(nodes)
+
+        for node in nodes:
+            filepath = node.metadata.get("filepath")
+            if filepath not in stats["node_counts_per_file"]:
+                stats["node_counts_per_file"][filepath] = 0
+            stats["node_counts_per_file"][filepath] += 1
+
+        for filepath, count in stats["node_counts_per_file"].items():
+            if count == 0:
+                stats["files_with_zero_nodes"] += 1
+            elif count == 1:
+                stats["files_with_one_node"] += 1
+            else:
+                stats["files_with_more_than_one_node"] += 1
         
+        if len(stats["node_counts_per_file"]) > 0:
+            stats["average_nodes_per_file"] = stats["total_nodes_generated"] / len(stats["node_counts_per_file"])
+
+        end_time = time.time()
+        execution_seconds = end_time - start_time
+        hours, rem = divmod(execution_seconds, 3600)
+        minutes, seconds = divmod(rem, 60)
+        stats["execution_time"] = f"{int(hours)} hours, {int(minutes)} minutes, {int(seconds)} seconds"
+
+        print(json.dumps(stats, indent=4))
+
         return index, retriever, nodes
         
     except Exception as e:

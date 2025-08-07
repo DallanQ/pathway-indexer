@@ -328,7 +328,7 @@ def has_markdown_tables(content):
     ]
     return all(re.search(pattern, content, re.MULTILINE) for pattern in table_patterns)
 
-def parse_txt_to_md(file_path, file_extension, title_tag=""):
+def parse_txt_to_md(file_path, file_extension, stats, title_tag=""):
     """
     Parses a .txt file to a Markdown (.md) file using LlamaParse.
     """
@@ -350,6 +350,9 @@ def parse_txt_to_md(file_path, file_extension, title_tag=""):
     # validate if the content is empty
     is_empty = all(is_empty_content(doc.text) for doc in documents)
 
+    if is_empty:
+        stats["documents_empty_from_llamaparse"] += 1
+
     # base_filename = os.path.basename(file_path)
     out_name = file_path.replace(".txt", ".md")
 
@@ -364,6 +367,8 @@ def parse_txt_to_md(file_path, file_extension, title_tag=""):
             f.write(doc.text)
             f.write("\n\n")
         print(f"Parsed TXT to MD and saved to: {out_name}")
+
+    stats["md_files_generated"] += 1
 
     return is_empty
 
@@ -509,7 +514,7 @@ def attach_metadata_to_markdown_directories(markdown_dirs, metadata_dict):
                 print(f"No metadata found for {file_path}. Skipping.")
 
 
-def process_file(file_path, out_folder):
+def process_file(file_path, out_folder, stats):
     """
     Processes a file based on its extension: PDF or HTML.
     """
@@ -521,7 +526,12 @@ def process_file(file_path, out_folder):
 
     if file_path.lower().endswith(".pdf"):
         # Handle PDF file
-        for _ in range(3):
+        stats["documents_sent_to_llamaparse"] += 1
+        for i in range(3):
+            if i > 0:
+                if file_path not in stats["documents_retried"]:
+                    stats["documents_retried"][file_path] = 0
+                stats["documents_retried"][file_path] += 1
             txt_file_path = parse_pdf_to_txt(file_path, out_folder)
             if txt_file_path != "Error":
                 break
@@ -530,7 +540,12 @@ def process_file(file_path, out_folder):
 
     elif file_path.lower().endswith(".html"):
         # Handle HTML file
-        for _ in range(3):
+        stats["documents_sent_to_llamaparse"] += 1
+        for i in range(3):
+            if i > 0:
+                if file_path not in stats["documents_retried"]:
+                    stats["documents_retried"][file_path] = 0
+                stats["documents_retried"][file_path] += 1
             txt_file_path, title_tag = convert_html_to_markdown(file_path, out_folder)
             if title_tag != "Error parsing.":
                 break
@@ -540,21 +555,23 @@ def process_file(file_path, out_folder):
     if title_tag != "Error parsing.":
         # try a maximum of 3 times to parse the txt file to md
         for _ in range(3):
-            is_empty = parse_txt_to_md(txt_file_path, file_extension, title_tag)
+            is_empty = parse_txt_to_md(txt_file_path, file_extension, stats, title_tag)
             if not is_empty:
                 # remove the txt file
                 os.remove(txt_file_path)
+                stats["documents_rescued_by_fallback"] += 1
                 return
             print("Error parsing TXT file to MD. Retrying...")
             time.sleep(4)
 
+    stats["documents_failed_after_fallback"] += 1
     # move the txt file to the error folder
     error_folder = os.path.join(out_folder, "error")
     os.rename(txt_file_path, os.path.join(error_folder, os.path.basename(txt_file_path)))  # moving the file
     print(f"Error parsing TXT file to MD. Moved to {error_folder}")
 
 
-def process_directory(origin_path, out_folder):
+def process_directory(origin_path, out_folder, stats):
     """
     Processes all HTML and PDF files in the specified directory.
     """
@@ -565,7 +582,7 @@ def process_directory(origin_path, out_folder):
             if file.lower().endswith((".html", ".pdf")):
                 file_path = os.path.join(root, file)
                 print(f"Processing file: {file_path}")
-                process_file(file_path, out_folder)
+                process_file(file_path, out_folder, stats)
 
 
 def add_titles_tag(input_directory, out_folder):

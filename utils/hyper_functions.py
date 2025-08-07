@@ -238,7 +238,9 @@ def extract_index_metadata(node):
     # TODO! don't join the last part if its empty - make sure we don't still have unnecessary --- separators
     content = "---\n".join(parts[2:])
 
-    return TextNode(metadata=headers, text=content)
+    # Preserve existing metadata and add new headers
+    all_metadata = {**node.metadata, **headers}
+    return TextNode(metadata=all_metadata, text=content)
 
 
 def get_headers_and_paragraphs(node: BaseNode) -> list[str]:

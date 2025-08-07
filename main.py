@@ -13,10 +13,16 @@ from pathway_indexer.memory import (
 from pathway_indexer.parser import parse_files_to_md
 
 def inspect_md_files(stats):
+    # Reset all relevant counters before counting
+    stats["files_with_empty_content"] = 0
+    stats["files_with_only_metadata"] = 0
+    stats["files_with_error_messages"] = 0
+    md_file_count = 0
     out_folder = os.path.join(os.getenv("DATA_PATH"), "out")
     for root, _dirs, files in os.walk(out_folder):
         for file in files:
             if file.endswith(".md"):
+                md_file_count += 1
                 file_path = os.path.join(root, file)
                 with open(file_path, "r", encoding="utf-8") as f:
                     content = f.read()
@@ -39,6 +45,8 @@ def inspect_md_files(stats):
                 # Check for files with error messages in the content
                 if "Could not parse" in content or "Rate limit exceeded" in content:
                     stats["files_with_error_messages"] += 1
+    # Update md_files_generated to match actual count
+    stats["md_files_generated"] = md_file_count
 
 
 

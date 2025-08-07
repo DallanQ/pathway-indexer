@@ -271,7 +271,6 @@ def main():
         # Announcement after node counts log
         metrics_explanation_path = "results.md"
         print(f"\nWhat do these numbers mean? Check ./{metrics_explanation_path}")
-        del stats["node_counts_per_file"]
 
         # Append indexer metrics explanation to metrics_explanation.log
         metrics_explanation_path = os.path.join(os.getenv("DATA_PATH"), "metrics_explanation.log")

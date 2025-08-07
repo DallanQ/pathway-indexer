@@ -364,6 +364,8 @@ def get_paragraph_nodes(
     nodes = []
     headers = {}
     doc_metadata = {key: value for key, value in doc_node.metadata.items()}
+    # Ensure filepath is always preserved in node metadata
+    filepath = doc_metadata.get("filepath")
     for par in headers_paragraphs:
         # if this is a header, update the headers
         if par.startswith("#"):
@@ -374,6 +376,8 @@ def get_paragraph_nodes(
                 **doc_metadata,
                 "context": par,
             }
+            if filepath is not None:
+                metadata["filepath"] = filepath
             node = TextNode(metadata=metadata, text=par)
             nodes.append(node)
     return nodes

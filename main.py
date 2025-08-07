@@ -109,37 +109,37 @@ Here’s what each metric means in your pipeline and indexer results:
 
 Pipeline Metrics
 
-➤ total_documents_crawled: {stats.get("total_documents_crawled", "N/A")}
+=> total_documents_crawled: {stats.get("total_documents_crawled", "N/A")}
 Number of URLs found and listed for crawling.
 
-➤ unique_files_processed: {stats.get("unique_files_processed", "N/A")}
+=> unique_files_processed: {stats.get("unique_files_processed", "N/A")}
 Number of files determined as changed and needing processing (if zero, change detection found none; all files processed outside change detection).
 
-➤ documents_sent_to_llamaparse: {stats.get("documents_sent_to_llamaparse", "N/A")}
+=> documents_sent_to_llamaparse: {stats.get("documents_sent_to_llamaparse", "N/A")}
 Number of files sent to LlamaParse for conversion to markdown.
 
-➤ documents_empty_from_llamaparse: {stats.get("documents_empty_from_llamaparse", "N/A")}
+=> documents_empty_from_llamaparse: {stats.get("documents_empty_from_llamaparse", "N/A")}
 Number of times LlamaParse returned empty content (likely due to unsupported or blank input).
 
-➤ documents_successful_after_retries: {stats.get("documents_successful_after_retries", "N/A")}
+=> documents_successful_after_retries: {stats.get("documents_successful_after_retries", "N/A")}
 Number of files that were rescued by retry logic after LlamaParse failed.
 
-➤ documents_failed_after_retries: {stats.get("documents_failed_after_retries", "N/A")}
+=> documents_failed_after_retries: {stats.get("documents_failed_after_retries", "N/A")}
 Number of files that failed to produce content even after all retry attempts.
 
-➤ md_files_generated: {stats.get("md_files_generated", "N/A")}
+=> md_files_generated: {stats.get("md_files_generated", "N/A")}
 Total markdown files created (one per input file).
 
-➤ files_with_only_metadata: {stats.get("files_with_only_metadata", "N/A")}
+=> files_with_only_metadata: {stats.get("files_with_only_metadata", "N/A")}
 Markdown files that contain only metadata (no actual content).
 
-➤ files_processed_outside_change_detection: {stats.get("files_processed_outside_change_detection", "N/A")}
+=> files_processed_outside_change_detection: {stats.get("files_processed_outside_change_detection", "N/A")}
 All files were processed outside change detection (since none were flagged as changed).
 
-➤ files_processed_by_directory: {stats.get("files_processed_by_directory", "N/A")}
+=> files_processed_by_directory: {stats.get("files_processed_by_directory", "N/A")}
 Total files processed by the directory parser (matches input count).
 
-➤ execution_time: {stats.get("execution_time", "N/A")}
+=> execution_time: {stats.get("execution_time", "N/A")}
 Total time taken for the pipeline run.
 --------------------------------------------------------
     """

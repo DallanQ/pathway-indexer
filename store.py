@@ -277,13 +277,13 @@ def main():
         indexer_explanation = f"""
 Indexer Metrics
 
-➤ Files list length: {len(stats["node_counts_per_file"])}
+=> Files list length: {len(stats["node_counts_per_file"])}
 Number of markdown files loaded for indexing.
 
-➤ Total nodes processed: {sum(stats["node_counts_per_file"].values())}
+=> Total nodes processed: {sum(stats["node_counts_per_file"].values())}
 Number of nodes (chunks of content) created and indexed from the markdown files.
 
-➤ Node counts per file saved to: node_counts_log.json
+=> Node counts per file saved to: node_counts_log.json
 Node counts per file are logged for analysis.
 """
         with open(metrics_explanation_path, "a") as f:

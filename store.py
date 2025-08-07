@@ -267,8 +267,29 @@ def main():
         node_counts_log_path = os.path.join(os.getenv("DATA_PATH"), "node_counts_log.json")
         with open(node_counts_log_path, "w") as f:
             json.dump(stats["node_counts_per_file"], f, indent=4)
-        print(f"Node counts per file saved to: {os.path.basename(node_counts_log_path)}")
+        print(f"Node counts per file saved to: {os.path.relpath(node_counts_log_path, start=os.getcwd())}")
+        # Announcement after node counts log
+        metrics_explanation_path = "results.md"
+        print(f"\nWhat do these numbers mean? Check ./{metrics_explanation_path}")
         del stats["node_counts_per_file"]
+
+        # Append indexer metrics explanation to metrics_explanation.log
+        metrics_explanation_path = "metrics_explanation.log"
+        indexer_explanation = f"""
+Indexer Metrics
+
+Files list length: {len(stats["node_counts_per_file"])}
+Number of markdown files loaded for indexing.
+
+Total nodes processed: {sum(stats["node_counts_per_file"].values())}
+Number of nodes (chunks of content) created and indexed from the markdown files.
+
+Node counts per file saved to: node_counts_log.json
+Node counts per file are logged for analysis.
+"""
+        with open(metrics_explanation_path, "a") as f:
+            f.write(indexer_explanation)
+        print(f"\nWhat do these numbers mean? See ./{metrics_explanation_path}")
 
         return index, retriever, nodes
 

@@ -48,7 +48,7 @@ def main():
         "documents_sent_to_llamaparse": 0,
         "documents_empty_from_llamaparse": 0,
         "documents_successful_after_retries": 0,  # formerly rescued_by_fallback
-        "documents_failed_after_retries": 0,      # formerly failed_after_fallback
+        "documents_failed_after_retries": 0,  # formerly failed_after_fallback
         "md_files_generated": 0,
         "files_with_only_metadata": 0,
         "files_processed_outside_change_detection": 0,
@@ -62,7 +62,7 @@ def main():
     # Initialize detailed log file
     with open(detailed_log_path, "w") as f:
         f.write("")  # Clear content from previous runs
-    print(f"Detailed pipeline log will be saved to: {os.path.abspath(detailed_log_path)}")
+    print(f"Detailed pipeline log will be saved to: {os.path.relpath(detailed_log_path, start=os.getcwd())}")
 
     print("Initializing JSON file...")
     last_data_json = initialize_json_file(detail_json_path, output_data_path)
@@ -102,7 +102,51 @@ def main():
 
     print("===>Process completed")
     print(json.dumps(stats, indent=4))
-    print(f"Node counts per file saved to: {os.path.abspath(os.path.join(DATA_PATH, 'node_counts_log.json'))}")
+    # Write metrics explanation to metrics_explanation.log (overwrite)
+    metrics_explanation_path = "metrics_explanation.log"
+    metrics_explanation = f"""
+Here’s what each metric means in your pipeline and indexer results:
+
+Pipeline Metrics
+
+total_documents_crawled: {stats.get("total_documents_crawled", "N/A")}
+Number of URLs found and listed for crawling (from Student Services only).
+
+unique_files_processed: {stats.get("unique_files_processed", "N/A")}
+Number of files determined as changed and needing processing (change detection found none; all files processed outside change detection).
+
+documents_sent_to_llamaparse: {stats.get("documents_sent_to_llamaparse", "N/A")}
+Number of files sent to LlamaParse for conversion to markdown.
+
+documents_empty_from_llamaparse: {stats.get("documents_empty_from_llamaparse", "N/A")}
+Number of times LlamaParse returned empty content (likely due to unsupported or blank input).
+
+documents_rescued_by_fallback: {stats.get("documents_successful_after_retries", "N/A")}
+Number of files that were rescued by fallback logic after LlamaParse failed.
+
+documents_failed_after_fallback: {stats.get("documents_failed_after_retries", "N/A")}
+Number of files that failed to produce content even after fallback attempts.
+
+md_files_generated: {stats.get("md_files_generated", "N/A")}
+Total markdown files created (one per input file).
+
+files_with_only_metadata: {stats.get("files_with_only_metadata", "N/A")}
+Markdown files that contain only metadata (no actual content).
+
+files_processed_outside_change_detection: {stats.get("files_processed_outside_change_detection", "N/A")}
+All files were processed outside change detection (since none were flagged as changed).
+
+files_processed_by_directory: {stats.get("files_processed_by_directory", "N/A")}
+Total files processed by the directory parser (matches input count).
+
+execution_time: {stats.get("execution_time", "N/A")}
+Total time taken for the pipeline run.
+--------------------------------------------------------
+"""
+    with open(metrics_explanation_path, "w") as f:
+        f.write(metrics_explanation)
+    print(f"\nWhat do these numbers mean? See ./{metrics_explanation_path}")
+    node_counts_path = os.path.join(DATA_PATH, "node_counts_log.json")
 
 
 if __name__ == "__main__":

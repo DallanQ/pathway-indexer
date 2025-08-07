@@ -57,6 +57,8 @@ def main():
     output_data_path = "data/last_output_data.csv"
     detailed_log_path = os.path.join(DATA_PATH, "pipeline_detailed_log.jsonl")
 
+    # Ensure the parent directory for the detailed log file exists
+    os.makedirs(os.path.dirname(detailed_log_path), exist_ok=True)
     # Initialize detailed log file
     with open(detailed_log_path, "w") as f:
         f.write("")  # Clear content from previous runs

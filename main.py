@@ -119,7 +119,7 @@ Number of files determined as changed and needing processing (if zero, change de
 Number of files sent to LlamaParse for conversion to markdown.
 
 => documents_empty_from_llamaparse: {stats.get("documents_empty_from_llamaparse", "N/A")}
-Number of times LlamaParse returned empty content (likely due to unsupported or blank input).
+Number of times LlamaParse returned empty content (likely due to unsupported, blank input or API limits).
 
 => documents_successful_after_retries: {stats.get("documents_successful_after_retries", "N/A")}
 Number of files that were rescued by retry logic after LlamaParse failed.
@@ -134,10 +134,10 @@ Total markdown files created (one per input file).
 Markdown files that contain only metadata (no actual content).
 
 => files_processed_outside_change_detection: {stats.get("files_processed_outside_change_detection", "N/A")}
-All files were processed outside change detection (since none were flagged as changed).
+All files were processed outside change detection.
 
 => files_processed_by_directory: {stats.get("files_processed_by_directory", "N/A")}
-Total files processed by the directory parser (matches input count).
+Total files processed by the directory parser (should match input count).
 
 => execution_time: {stats.get("execution_time", "N/A")}
 Total time taken for the pipeline run.

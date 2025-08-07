@@ -1,18 +1,15 @@
-import re
 import os
 import shutil
-import csv
 
 import pandas as pd
 
+from utils.calendar_format import calendar_format
 from utils.parser import (
     add_titles_tag,
     associate_markdown_with_metadata,
     attach_metadata_to_markdown_directories,
     process_directory,
 )
-
-from utils.calendar_format import calendar_format
 
 DATA_PATH = os.getenv("DATA_PATH")
 OUT_PATH = os.path.join(DATA_PATH, "out")
@@ -22,6 +19,7 @@ EXCLUDED_PATH = os.path.join(DATA_PATH, "excluded_domains.txt")
 def parse_files_to_md(
     last_data_json,
     stats,
+    detailed_log_path,
     input_directory=DATA_PATH,
     out_folder=OUT_PATH,
     metadata_csv="all_links.csv",
@@ -35,23 +33,21 @@ def parse_files_to_md(
 
     # print(last_data_json["last_folder_crawl"])
 
-    files_to_process = analyze_file_changes(
-        output_data_path, last_output_data_path, out_folder, last_data_json, stats
-    )
+    files_to_process = analyze_file_changes(output_data_path, last_output_data_path, out_folder, last_data_json, stats)
     if not files_to_process.empty:
         empty_llamaparse_files_counted = set()
         process_modified_files(
-            input_directory, out_folder, metadata_csv, excluded_domains_path, stats, empty_llamaparse_files_counted
+            input_directory,
+            out_folder,
+            metadata_csv,
+            excluded_domains_path,
+            stats,
+            empty_llamaparse_files_counted,
+            detailed_log_path,
         )
 
-    # Save current_df as last_output_data.csv for next run
-    # files_to_process.drop(columns=["HasChanged"], inplace=True)
-    print("All tasks completed successfully.")
 
-
-def analyze_file_changes(
-    output_data_path, last_output_data_path, out_folder, last_data_json, stats
-):
+def analyze_file_changes(output_data_path, last_output_data_path, out_folder, last_data_json, stats):
     """
     Analyze file changes by comparing current and last output data based on Content Hash,
     only for HTML files. PDF files are always included in files_to_process.
@@ -79,11 +75,7 @@ def analyze_file_changes(
         return current_df  # Process all files if no last output data
 
     last_df = pd.read_csv(last_output_data_path)
-    last_hash_dict = (
-        last_df[last_df["Content Type"] == "html"]
-        .set_index("URL")["Content Hash"]
-        .to_dict()
-    )
+    last_hash_dict = last_df[last_df["Content Type"] == "html"].set_index("URL")["Content Hash"].to_dict()
 
     # Apply hash check only to HTML files
     def has_changes(row):
@@ -98,9 +90,7 @@ def analyze_file_changes(
     for _, row in unchanged_html_files.iterrows():
         print("Skipping unchanged file:", row["Filepath"])
         pathname = os.path.basename(row["Filepath"]).replace(".html", ".md")
-        src_path = os.path.join(
-            last_data_json["last_folder_crawl"], "out", "from_html", pathname
-        )
+        src_path = os.path.join(last_data_json["last_folder_crawl"], "out", "from_html", pathname)
         dst_path = os.path.join(out_folder, "from_html", pathname)
 
         os.makedirs(os.path.dirname(dst_path), exist_ok=True)
@@ -123,7 +113,13 @@ def analyze_file_changes(
 
 
 def process_modified_files(
-    input_directory, out_folder, metadata_csv, excluded_domains_path, stats, empty_llamaparse_files_counted
+    input_directory,
+    out_folder,
+    metadata_csv,
+    excluded_domains_path,
+    stats,
+    empty_llamaparse_files_counted,
+    detailed_log_path,
 ):
     """
     Process modified files and associate metadata with Markdown files.
@@ -133,7 +129,9 @@ def process_modified_files(
         return
 
     print("Starting file processing for modified files...")
-    process_directory(input_directory, out_folder, stats, empty_llamaparse_files_counted) # convert the files to md
+    stats["files_processed_by_directory"] = process_directory(
+        input_directory, out_folder, stats, empty_llamaparse_files_counted, detailed_log_path
+    )  # convert the files to md
     print("File processing for modified files completed.")
 
     add_titles_tag(input_directory, out_folder)
@@ -144,9 +142,7 @@ def process_modified_files(
         with open(excluded_domains_path, encoding="UTF-8") as f:
             excluded_domains = f.read().splitlines()
 
-    metadata_dict = associate_markdown_with_metadata(
-        input_directory, out_folder, metadata_csv, excluded_domains
-    )
+    metadata_dict = associate_markdown_with_metadata(input_directory, out_folder, metadata_csv, excluded_domains)
     print("Metadata association completed.")
 
     print("Attaching metadata to Markdown files...")

@@ -87,12 +87,11 @@ async def fetch_content_from_student_services(urls):
 
 
 async def crawl_csv(df, base_dir, output_file="output_data.csv"):
-    """Takes CSV file in the format Heading, Subheading, Title, URL and processes each URL."""
+    """
+    Takes CSV file in the format Heading, Subheading, Title, URL and processes each URL.
+    Returns total_documents_crawled and total_documents_failed_during_crawl.
+    """
 
-    # Define a base directory within the user's space
-    # base_dir = "../data/data_16_09_24/crawl/"
-
-    # Create directories if they don't exist
     crawl_path = os.path.join(base_dir, "crawl")
     print(crawl_path)
     create_folder(crawl_path, is_full=True)
@@ -101,8 +100,11 @@ async def crawl_csv(df, base_dir, output_file="output_data.csv"):
     create_folder(crawl_path, "others")
 
     output_data = []
+    total_documents_crawled = len(df)
+    total_documents_failed_during_crawl = 0
 
     async def process_row(row):
+        nonlocal total_documents_failed_during_crawl
         url = row["URL"]
         heading = row["Section"]
         sub_heading = row["Subsection"]
@@ -112,13 +114,9 @@ async def crawl_csv(df, base_dir, output_file="output_data.csv"):
         if "sharepoint.com" in url or url == "https://www.byupathway.edu/pathwayconnect-block-academic-calendar":
             return
 
-        # Edit the title to become filename
-
-        # Determine the filepaths
         html_filepath = os.path.join(crawl_path, "html", f"{filename}.html")
         pdf_filepath = os.path.join(crawl_path, "pdf", f"{filename}.pdf")
 
-        # Skip fetching if the file already exists
         if os.path.exists(html_filepath) or os.path.exists(pdf_filepath):
             print(f"File already exists for {filename}. Skipping fetch.")
             return
@@ -130,7 +128,7 @@ async def crawl_csv(df, base_dir, output_file="output_data.csv"):
             try:
                 time.sleep(3)
                 response = requests.get(url, timeout=10)
-                response.raise_for_status()  # http errors
+                response.raise_for_status()
                 content_type = response.headers.get("content-type", "")
 
                 if any(domain in url for domain in ["faq.whatsapp"]):
@@ -146,16 +144,13 @@ async def crawl_csv(df, base_dir, output_file="output_data.csv"):
                         "myinstitute.churchofjesuschrist.org",
                     ]
                 ):
-                    # raise HTTPError
                     response.status_code = 403
-
                     raise requests.exceptions.HTTPError
                 elif "text/html" in content_type:
                     content = response.text.encode("utf-8")
                     text_content = response.text
                     filepath = html_filepath
                     if "help.byupathway.edu" in url:
-                        # from the content, get the information from the .wrapper-body
                         content = response.text
                         soup = BeautifulSoup(content, "html.parser")
                         content = soup.find("div", class_="wrapper-body").prettify()
@@ -171,7 +166,6 @@ async def crawl_csv(df, base_dir, output_file="output_data.csv"):
                         tablist = soup.find("div", {"role": "tablist"})
                         if tablist:
                             tab_links = tablist.find_all("a")
-                            # get only the links
                             tab_links = [
                                 {
                                     "title": link.text.strip(),
@@ -194,17 +188,14 @@ async def crawl_csv(df, base_dir, output_file="output_data.csv"):
                         f.write(response.content)
 
                 else:
-                    # Handle other content types by saving with the correct extension
                     file_extension = content_type.split("/")[-1].split(";")[0]
                     filepath = os.path.join(crawl_path, "others", f"{filename}.{file_extension}")
                     content = response.content
                     with open(filepath, "wb") as f:
                         f.write(response.content)
 
-                # Create content hash
                 content_hash = generate_content_hash(content)
 
-                # Append to the output list
                 output_data.append([
                     heading,
                     sub_heading,
@@ -215,7 +206,7 @@ async def crawl_csv(df, base_dir, output_file="output_data.csv"):
                     content_hash,
                     datetime.datetime.now().isoformat(),
                 ])
-                break  # Exit retry loop after successful fetch
+                break
 
             except requests.exceptions.HTTPError as http_err:
                 print(response.status_code)
@@ -233,7 +224,7 @@ async def crawl_csv(df, base_dir, output_file="output_data.csv"):
                         None,
                         datetime.datetime.now().isoformat(),
                     ])
-                    break  # Don't retry if it's a 403 error
+                    break
                 else:
                     print(f"HTTP error occurred for {url}: {http_err}")
                     retry_attempts -= 1
@@ -241,6 +232,7 @@ async def crawl_csv(df, base_dir, output_file="output_data.csv"):
                         print("Retrying in 10 seconds...")
                         time.sleep(10)
                     else:
+                        total_documents_failed_during_crawl += 1
                         output_data.append([
                             heading,
                             sub_heading,
@@ -259,6 +251,7 @@ async def crawl_csv(df, base_dir, output_file="output_data.csv"):
                     print("Retrying in 10 seconds...")
                     time.sleep(10)
                 else:
+                    total_documents_failed_during_crawl += 1
                     print(f"No content-type header found for {url}: {err}")
                     output_data.append([
                         heading,
@@ -271,14 +264,12 @@ async def crawl_csv(df, base_dir, output_file="output_data.csv"):
                         datetime.datetime.now().isoformat(),
                     ])
 
-    # Process rows in batches of 10 to manage memory usage efficiently
     batch_size = 10
     for i in range(0, len(df), batch_size):
-        batch = df.iloc[i : i + batch_size]  # Get next batch of rows
-        tasks = [process_row(row) for _, row in batch.iterrows()]  # Create tasks for batch
-        await asyncio.gather(*tasks)  # Process batch before continuing
+        batch = df.iloc[i : i + batch_size]
+        tasks = [process_row(row) for _, row in batch.iterrows()]
+        await asyncio.gather(*tasks)
 
-    # Create a DataFrame from the output data
     output_df = pd.DataFrame(
         output_data,
         columns=[
@@ -292,25 +283,20 @@ async def crawl_csv(df, base_dir, output_file="output_data.csv"):
             "Last Update",
         ],
     )
-    # Filtering rows where 'Content Hash' is None
     error_df = output_df[output_df["Content Hash"].isnull()]
     error_csv_path = os.path.join(base_dir, "error.csv")
 
-    # Saving the filtered DataFrame to a CSV file named "error.csv"
     error_df.to_csv(error_csv_path, index=False)
 
     out_path = os.path.join(base_dir, output_file)
 
-    # Append to the existing CSV file or create a new one if it doesn't exist
     if os.path.exists(out_path):
         existing_df = pd.read_csv(out_path)
         combined_df = pd.concat([existing_df, output_df], ignore_index=True)
 
-        # Delete the 'Last Update' column temporarily to remove duplicates
         combined_df_no_update = combined_df.drop(columns=["Last Update"])
         combined_df_no_update = combined_df_no_update.drop_duplicates()
 
-        # Add the 'Last Update' column back
         combined_df = combined_df_no_update.join(combined_df["Last Update"])
 
         combined_df.to_csv(out_path, mode="w", index=False)
@@ -318,3 +304,4 @@ async def crawl_csv(df, base_dir, output_file="output_data.csv"):
         output_df.to_csv(out_path, index=False)
 
     print(f"Processing completed. Output saved to {out_path}")
+    return total_documents_crawled, total_documents_failed_during_crawl

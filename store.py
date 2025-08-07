@@ -207,18 +207,51 @@ def main():
         # Step 3: Run the processing pipeline
         print("\n=== Step 3: Running processing pipeline ===")
         print("Starting pipeline...")
-        index, nodes = run_pipeline(documents, splitter, embed_model, vector_store, False)
+        index, nodes, node_counts_per_file = run_pipeline(documents, splitter, embed_model, vector_store, False)
         print("Pipeline finished!")
         
         # Step 4: Create retriever
         print("\n=== Step 4: Creating retriever ===")
         retriever = create_retriever(index)
+
+        # Step 5: Log node statistics
+        print("\n=== Step 5: Logging Node Statistics ===")
+        total_nodes_generated = len(nodes)
+        files_with_zero_nodes = 0
+        files_with_one_node = 0
+        files_with_more_than_one_node = 0
+
+        for filepath, count in node_counts_per_file.items():
+            if count == 0:
+                files_with_zero_nodes += 1
+            elif count == 1:
+                files_with_one_node += 1
+            else:
+                files_with_more_than_one_node += 1
+        
+        average_nodes_per_file = total_nodes_generated / len(node_counts_per_file) if node_counts_per_file else 0
+
+        print(f"Total nodes generated: {total_nodes_generated}")
+        print(f"Average nodes per file: {average_nodes_per_file:.2f}")
+        print(f"Files with zero nodes: {files_with_zero_nodes}")
+        print(f"Files with one node: {files_with_one_node}")
+        print(f"Files with more than one node: {files_with_more_than_one_node}")
+
+        # Write node counts per file to CSV
+        node_counts_csv_path = os.path.join(os.getenv("DATA_PATH"), "node_counts.csv")
+        with open(node_counts_csv_path, "w", newline="", encoding="utf-8") as f:
+            writer = csv.writer(f)
+            writer.writerow(["filepath", "node_count"])
+            for filepath, count in node_counts_per_file.items():
+                writer.writerow([filepath, count])
+        print(f"Node counts per file saved to: {node_counts_csv_path}")
+        print(f"cd {os.path.dirname(node_counts_csv_path)} to view the file.")
         
         print(f"\n✅ Process completed successfully!")
         print(f"   - Total nodes processed: {len(nodes)}")
         print(f"   - Vector store ready for queries")
         
-        return index, retriever, nodes
+        return index, retriever, nodes, total_nodes_generated, average_nodes_per_file, files_with_zero_nodes, files_with_one_node, files_with_more_than_one_node, node_counts_csv_path
         
     except Exception as e:
         print(f"\n❌ Error in main process: {e}")

@@ -538,7 +538,14 @@ def run_pipeline(documents, splitter, embed_model, vector_store, include_prev_ne
 
     index.insert_nodes(nodes)
     print(f"Nodes inserted: {len(nodes)}")
-    return index, nodes  # CHANGED
+
+    node_counts_per_file = {}
+    for node in nodes:
+        filepath = node.metadata.get('filepath')
+        if filepath:
+            node_counts_per_file[filepath] = node_counts_per_file.get(filepath, 0) + 1
+
+    return index, nodes, node_counts_per_file
 
 def get_vector_store():
     api_key = os.getenv("PINECONE_API_KEY")

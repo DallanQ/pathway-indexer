@@ -37,16 +37,17 @@ def parse_files_to_md(
     files_to_process = analyze_file_changes(
         output_data_path, last_output_data_path, out_folder, last_data_json
     )
-    llama_parse_count, indexed_count, empty_files_count = 0, 0, 0
+    llama_parse_count, indexed_count, empty_files_count, documents_retried, documents_rescued_by_fallback, documents_failed_after_fallback = 0, 0, 0, 0, 0, 0
     if not files_to_process.empty:
-        llama_parse_count, indexed_count, empty_files_count = process_modified_files(
+        llama_parse_count, indexed_count, empty_files_count, documents_retried, documents_rescued_by_fallback, documents_failed_after_fallback = process_modified_files(
             input_directory, out_folder, metadata_csv, excluded_domains_path
         )
 
     # Save current_df as last_output_data.csv for next run
     # files_to_process.drop(columns=["HasChanged"], inplace=True)
     print("All tasks completed successfully.")
-    return llama_parse_count, indexed_count, empty_files_count
+    files_with_only_metadata, files_with_error_messages, files_with_empty_content = analyze_markdown_quality(out_folder)
+    return llama_parse_count, indexed_count, empty_files_count, documents_retried, documents_rescued_by_fallback, documents_failed_after_fallback, files_with_only_metadata, files_with_error_messages, files_with_empty_content
 
 def analyze_file_changes(
     output_data_path, last_output_data_path, out_folder, last_data_json
@@ -127,13 +128,11 @@ def process_modified_files(
     """
     if is_directory_empty(input_directory):
         print("No modified files found; skipping file processing.")
-        return 0, 0, 0
+        return 0, 0, 0, 0, 0, 0
 
     print("Starting file processing for modified files...")
-    nodes_log_path = os.path.join(DATA_PATH, "nodes_log.csv")
-    nodes_csv_path = os.path.join(DATA_PATH, "nodes.csv")
-    llama_parse_count, indexed_count, empty_files_count = process_directory(
-        input_directory, out_folder, nodes_log_path, nodes_csv_path
+    llama_parse_count, indexed_count, empty_files_count, documents_retried, documents_rescued_by_fallback, documents_failed_after_fallback = process_directory(
+        input_directory, out_folder
     )  # convert the files to md
     print("File processing for modified files completed.")
 
@@ -157,7 +156,40 @@ def process_modified_files(
     print("Processing special formats...")
     calendar_format(input_directory, metadata_csv)
 
-    return llama_parse_count, indexed_count, empty_files_count
+    return llama_parse_count, indexed_count, empty_files_count, documents_retried, documents_rescued_by_fallback, documents_failed_after_fallback
 
 def is_directory_empty(directory_path):
     return not os.listdir(directory_path)
+
+def analyze_markdown_quality(out_folder):
+    files_with_only_metadata = 0
+    files_with_error_messages = 0
+    files_with_empty_content = 0
+
+    md_files = []
+    for root, _, files in os.walk(out_folder):
+        for file in files:
+            if file.lower().endswith(".md"):
+                md_files.append(os.path.join(root, file))
+
+    for md_file_path in md_files:
+        with open(md_file_path, "r", encoding="utf-8") as f:
+            content = f.read()
+
+        # Check for only metadata (YAML frontmatter)
+        # A simple check: if content starts and ends with '---' and has little else
+        # This might need refinement based on actual YAML frontmatter structure
+        if content.strip().startswith("---") and content.strip().endswith("---") and len(content.strip().splitlines()) < 10:
+            files_with_only_metadata += 1
+
+        # Check for error messages
+        if "Could not parse" in content or "Error parsing." in content:
+            files_with_error_messages += 1
+
+        # Check for empty content (after removing metadata and potential error messages)
+        cleaned_content = re.sub(r"^---\n.*?---\n", "", content, flags=re.DOTALL) # Remove YAML frontmatter
+        cleaned_content = cleaned_content.replace("Could not parse", "").replace("Error parsing.", "")
+        if not cleaned_content.strip():
+            files_with_empty_content += 1
+
+    return files_with_only_metadata, files_with_error_messages, files_with_empty_content

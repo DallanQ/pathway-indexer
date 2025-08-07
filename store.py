@@ -289,7 +289,10 @@ Node counts per file are logged for analysis.
 """
         with open(metrics_explanation_path, "a") as f:
             f.write(indexer_explanation)
-        print(f"\nWhat do these numbers mean? See ./{metrics_explanation_path}")
+        # Print path relative to repo root
+        repo_root = os.path.dirname(os.path.abspath(__file__))
+        rel_path = os.path.relpath(metrics_explanation_path, start=repo_root)
+        print(f"\nWhat do these numbers mean? See ./{rel_path}")
 
         return index, retriever, nodes
 

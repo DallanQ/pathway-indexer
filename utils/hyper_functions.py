@@ -531,7 +531,6 @@ def run_pipeline(documents, splitter, embed_model, vector_store, include_prev_ne
         
         # ignore files without a URL
         if 'url' not in node.metadata:
-            print(f"Node without URL: {node.metadata}")
             continue
         
         if url and url == node.metadata.get('url'):

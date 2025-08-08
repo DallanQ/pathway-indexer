@@ -255,32 +255,41 @@ def main():
             else:
                 stats["files_with_more_than_one_node"] += 1
 
-        end_time = time.time()
-        execution_seconds = end_time - start_time
-        hours, rem = divmod(execution_seconds, 3600)
-        minutes, seconds = divmod(rem, 60)
-        hours_str = f"{int(hours)} hour" if int(hours) == 1 else f"{int(hours)} hours"
-        minutes_str = f"{int(minutes)} minute" if int(minutes) == 1 else f"{int(minutes)} minutes"
-        seconds_str = f"{int(seconds)} second" if int(seconds) == 1 else f"{int(seconds)} seconds"
-        stats["execution_time"] = f"{hours_str}, {minutes_str}, {seconds_str}"
-
-        node_counts_log_path = os.path.join(os.getenv("DATA_PATH"), "node_counts_log.json")
-        with open(node_counts_log_path, "w") as f:
-            json.dump(stats["node_counts_per_file"], f, indent=4)
-        print(f"Node counts per file saved to: {node_counts_log_path}")
+        # Calculate average nodes per file
+        if len(stats["node_counts_per_file"]) > 0:
+            stats["average_nodes_per_file"] = round(
+                sum(stats["node_counts_per_file"].values()) / len(stats["node_counts_per_file"]), 2
+            )
+        else:
+            stats["average_nodes_per_file"] = 0
         # Append indexer metrics explanation to metrics_explanation.log
         metrics_explanation_path = os.path.join(os.getenv("DATA_PATH"), "metrics_explanation.log")
         indexer_explanation = f"""
 Indexer Metrics
 
-=> Files list length: {len(stats["node_counts_per_file"])}
-Number of markdown files loaded for indexing.
+=> Actual Files with indexable content: {len(stats["node_counts_per_file"])}
+Number of markdown files loaded for indexing. Only {len(stats["node_counts_per_file"])} files had indexable content and were included in the final indexer metrics.
 
 => Total nodes processed: {sum(stats["node_counts_per_file"].values())}
 Number of nodes (chunks of content) created and indexed from the markdown files.
 
+=> Average nodes per file: {stats["average_nodes_per_file"]}
+Average number of nodes per indexed file.
+
+=> Files with zero nodes: {stats["files_with_zero_nodes"]}
+Number of files that had no indexable content.
+
+=> Files with one node: {stats["files_with_one_node"]}
+Number of files that produced only one node.
+
+=> Files with more than one node: {stats["files_with_more_than_one_node"]}
+Number of files that produced more than one node.
+
 => Node counts per file saved to: node_counts_log.json
 Node counts per file are logged for analysis.
+
+=> execution_time: {stats["execution_time"]}
+Time taken for the indexing process.
 """
         with open(metrics_explanation_path, "a") as f:
             f.write(indexer_explanation)

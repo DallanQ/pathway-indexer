@@ -255,6 +255,14 @@ def main():
             else:
                 stats["files_with_more_than_one_node"] += 1
 
+        end_time = time.time()
+        execution_seconds = end_time - start_time
+        hours, rem = divmod(execution_seconds, 3600)
+        minutes, seconds = divmod(rem, 60)
+        hours_str = f"{int(hours)} hour" if int(hours) == 1 else f"{int(hours)} hours"
+        minutes_str = f"{int(minutes)} minute" if int(minutes) == 1 else f"{int(minutes)} minutes"
+        seconds_str = f"{int(seconds)} second" if int(seconds) == 1 else f"{int(seconds)} seconds"
+        stats["execution_time"] = f"{hours_str}, {minutes_str}, {seconds_str}"
         # Calculate average nodes per file
         if len(stats["node_counts_per_file"]) > 0:
             stats["average_nodes_per_file"] = round(

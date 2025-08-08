@@ -1,4 +1,6 @@
 import csv
+import datetime
+import json
 import logging
 import os
 import re
@@ -41,36 +43,34 @@ def is_empty_content(content):
 
 
 def clean_markdown(text):
-    text = re.sub(r"```markdown+", "", text)
+    text = re.sub(r"```markdown", "", text)
 
-    # Remove Markdown backticks
-    text = re.sub(r"```+", "", text)
+    # Remove Markdown code blocks
+    text = re.sub(r"```[\w]*\n?", "", text)
 
-    # Remove inline code backticks (`text`)
-    text = re.sub(r"`+", "", text)
+    # Remove inline code backticks
+    text = re.sub(r"`([^`]*)`", r"\1", text)
 
     text = re.sub(r"\[Print\]\(javascript:window\.print\(\)\)", "", text)
 
-    # Remove list of links with same anchors
-    text = re.sub(r"(?:(https?:\/\/[^\s]+)\s+){2,}", "", text)  # Remove repeated links
+    # Remove repeated links
+    text = re.sub(r"(https?:\/\/[^\s]+)(\s+\1)+", r"\1", text)
 
     # Replace [link](#) and [link](url) with link text only
     text = re.sub(r"\[([^\]]+)\]\(([^)]+)\)", r"\1", text)
 
     # Remove lists of links to the same page (e.g., [All](#) [Web Pages](#))
-    text = re.sub(r"(\[([^\]]+)\]\(#\))+(?:\s|,)*", "", text)
+    text = re.sub(r"(\[([^\]]+)\]\(#\)[\s,]*)+", "", text)
 
-    # Regular expression to remove unnecessary text from
-    # knowledge base articles
     # Remove specific table headers
-    text = re.sub(r"\| \*\*Bot Information\*\* \|\n\| --- \|", "", text)
-    text = re.sub(r"\| \*\*Information\*\* \|\n\| --- \|", "", text)
-    text = re.sub(r"Views:\n\n\|\s*Article Overview\s*\|\s*\n\|\s*---\s*\|\s*\n\|.*?\|", "", text, flags=re.DOTALL)
-    text = re.sub(r"\|\s*Information\s*\|\s*\n\|\s*---\s*\|\s*\n\|.*?\|", "", text, flags=re.DOTALL)
-    text = re.sub(r"\|\s*Bot Information\s*\|\s*\n\|\s*---\s*\|\s*\n\|.*?\|", "", text, flags=re.DOTALL)
+    text = re.sub(r"\| \*\*Bot Information\*\* \|\n\| ---\|", "", text)
+    text = re.sub(r"\| \*\*Information\*\* \|\n\| ---\|", "", text)
+    text = re.sub(r"Views:\n\n\|\s*Article Overview\s*\|\s*\n\|\s*---\|\s*\|.*?\|", "", text, flags=re.DOTALL)
+    text = re.sub(r"\|\s*Information\s*\|\s*\n\|\s*---\|\s*\|.*?\|", "", text, flags=re.DOTALL)
+    text = re.sub(r"\|\s*Bot Information\s*\|\s*\n\|\s*---\|\s*\|.*?\|", "", text, flags=re.DOTALL)
     text = re.sub(r"\n\s*\*\*Information\*\*\s*\n", "\n", text)
-    text = re.sub(r"##? Views:\n\n\| \*\*Article Overview\*\* \|\n\| --- \|\n\|.*?\|", "", text, flags=re.DOTALL)
-    text = re.sub(r"Views:\n\n\| \*\*Article Overview\*\* \|\n\| --- \|\n\|.*?\|", "", text, flags=re.DOTALL)
+    text = re.sub(r"##? Views:\n\n\| \*\*Article Overview\*\* \|\n\| ---\|\n\|.*?\|", "", text, flags=re.DOTALL)
+    text = re.sub(r"Views:\n\n\| \*\*Article Overview\*\* \|\n\| ---\|\n\|.*?\|", "", text, flags=re.DOTALL)
     text = re.sub(r"^\| Information \|\n", "", text, flags=re.MULTILINE)
     text = re.sub(r"\*\s*(Home|Knowledge Base - Home|KA-\d+)\s*\n", "", text)
     text = re.sub(
@@ -80,18 +80,14 @@ def clean_markdown(text):
     )
     text = re.sub(r"You're offline\. This is a read only version of the page\.", "", text)
 
-    # Others regular expressions to remove unnecessary text
     # Remove empty headers
     text = re.sub(r"^#+\s*$", "", text, flags=re.MULTILINE)
 
     # Remove text from WhatsApp navigation
     text = re.sub(r"Copy link\S*", "Copy link", text)
 
-    # Remove text from the hall foundation menu
-    # text = re.sub(r"(Skip to content|Menu|[*+-].*)\n", '', text, flags=re.MULTILINE)
-
     # Remove broken links
-    text = re.sub(r"\[([^\]]+)\]\.\n\n\((http[^\)]+)\) \(([^)]+)\)\.", r"\1 (\3).", text)
+    text = re.sub(r"\[([^\]]+)\]\.[\n\n]*\((http[^)]+)\) \(([^)]+)\)\.", r"\1 (\3).\n", text)
 
     # Remove consecutive blank lines
     text = re.sub(r"\n\s*\n\s*\n", "\n\n", text)
@@ -329,22 +325,64 @@ def has_markdown_tables(content):
     return all(re.search(pattern, content, re.MULTILINE) for pattern in table_patterns)
 
 
-def parse_txt_to_md(file_path, file_extension, title_tag=""):
+def parse_txt_to_md(file_path, file_extension, stats, empty_llamaparse_files_counted, detailed_log_path, title_tag=""): 
     """
-    Parses a .txt file to a Markdown (.md) file using LlamaParse.
+    Parses a .txt file to a Markdown (.md) file using LlamaParse, with detailed logging.
     """
-    # get the file extension
+    import datetime
+    import json
 
     with open(file_path, encoding="utf-8") as f:
         content = f.read()
+
+    log_entry = {
+        "timestamp": datetime.datetime.now().isoformat(),
+        "stage": "parse_txt_to_md",
+        "filepath": file_path,
+        "status": "START",
+        "message": "Starting TXT to MD parsing.",
+    }
+    if detailed_log_path:
+        with open(detailed_log_path, "a") as f:
+            f.write(json.dumps(log_entry) + "\n")
 
     if not has_markdown_tables(content):
         documents = SimpleDirectoryReader(
             input_files=[file_path], file_extractor=create_file_extractor(file_extension)
         ).load_data()
+        log_entry = {
+            "timestamp": datetime.datetime.now().isoformat(),
+            "stage": "parse_txt_to_md",
+            "filepath": file_path,
+            "status": "LLAMAPARSE_USED",
+            "message": "Used LlamaParse extractor for TXT file.",
+        }
+        if detailed_log_path:
+            with open(detailed_log_path, "a") as f:
+                f.write(json.dumps(log_entry) + "\n")
     else:
-        # save the content to a list of documents
         documents = SimpleDirectoryReader(input_files=[file_path]).load_data()
+        log_entry = {
+            "timestamp": datetime.datetime.now().isoformat(),
+            "stage": "parse_txt_to_md",
+            "filepath": file_path,
+            "status": "DIRECT_LOAD",
+            "message": "Loaded TXT file directly without LlamaParse.",
+        }
+        if detailed_log_path:
+            with open(detailed_log_path, "a") as f:
+                f.write(json.dumps(log_entry) + "\n")
+
+    final_content = "\n\n".join([doc.text for doc in documents])
+
+    # If content from LlamaParse is empty, revert to original content
+    if is_empty_content(final_content):
+        final_content = content
+
+    # If the final content (even after reverting) is empty, then it's a failure
+    if is_empty_content(final_content):
+        print(f"Final content for {os.path.basename(file_path)} is empty. Moving to error.")
+        return True  # True indicates failure/empty
 
     final_content = "\n\n".join([doc.text for doc in documents])
 
@@ -362,13 +400,24 @@ def parse_txt_to_md(file_path, file_extension, title_tag=""):
 
     title_tag = clean_title(title_tag)
 
-    # os.makedirs(os.path.dirname(out_name), exist_ok=True)
-
     with open(out_name, "w", encoding="utf-8") as f:
         if title_tag:
             f.write(f"title: {title_tag}\n")
         f.write(final_content)
         print(f"Parsed TXT to MD and saved to: {out_name}")
+
+    stats["md_files_generated"] += 1
+
+    log_entry = {
+        "timestamp": datetime.datetime.now().isoformat(),
+        "stage": "parse_txt_to_md",
+        "filepath": file_path,
+        "status": "FINISHED",
+        "message": f"Finished TXT to MD parsing. Empty: {is_empty_content(final_content)}",
+    }
+    if detailed_log_path:
+        with open(detailed_log_path, "a") as f:
+            f.write(json.dumps(log_entry) + "\n")
 
     return False
 
@@ -467,6 +516,7 @@ def associate_markdown_with_metadata(markdown_dirs, csv_path, excluded_domains):
     return markdown_metadata_mapping
 
 
+
 def remove_existing_yaml_frontmatter(content):
     """
     Removes existing YAML front matter from the given content.
@@ -512,7 +562,7 @@ def attach_metadata_to_markdown_directories(markdown_dirs, metadata_dict):
                 print(f"No metadata found for {file_path}. Skipping.")
 
 
-def process_file(file_path, out_folder):
+def process_file(file_path, out_folder, stats, empty_llamaparse_files_counted, detailed_log_path):
     """
     Processes a file based on its extension: PDF or HTML.
     """
@@ -524,43 +574,172 @@ def process_file(file_path, out_folder):
 
     if file_path.lower().endswith(".pdf"):
         # Handle PDF file
-        for _ in range(3):
+        stats["documents_sent_to_llamaparse"] += 1
+        log_entry = {
+            "timestamp": datetime.datetime.now().isoformat(),
+            "stage": "parse",
+            "filepath": file_path,
+            "status": "PDF_PROCESSING_ATTEMPT",
+            "reason": "Attempting to process PDF file.",
+        }
+        if detailed_log_path:
+            with open(detailed_log_path, "a") as f:
+                f.write(json.dumps(log_entry) + "\n")
+        for i in range(3):
+            if i > 0:
+                log_entry = {
+                    "timestamp": datetime.datetime.now().isoformat(),
+                    "stage": "parse",
+                    "filepath": file_path,
+                    "status": "PDF_RETRY",
+                    "reason": f"Retrying PDF processing (attempt {i + 1}).",
+                }
+                if detailed_log_path:
+                    with open(detailed_log_path, "a") as f:
+                        f.write(json.dumps(log_entry) + "\n")
             txt_file_path = parse_pdf_to_txt(file_path, out_folder)
             if txt_file_path != "Error":
+                log_entry = {
+                    "timestamp": datetime.datetime.now().isoformat(),
+                    "stage": "parse",
+                    "filepath": file_path,
+                    "status": "PDF_TO_TXT_SUCCESS",
+                    "reason": "Successfully converted PDF to TXT.",
+                }
+                if detailed_log_path:
+                    with open(detailed_log_path, "a") as f:
+                        f.write(json.dumps(log_entry) + "\n")
                 break
             print("Error parsing PDF file. Retrying...")
+            log_entry = {
+                "timestamp": datetime.datetime.now().isoformat(),
+                "stage": "parse",
+                "filepath": file_path,
+                "status": "PDF_TO_TXT_FAILED",
+                "reason": "Failed to convert PDF to TXT. Retrying.",
+            }
+            if detailed_log_path:
+                with open(detailed_log_path, "a") as f:
+                    f.write(json.dumps(log_entry) + "\n")
             time.sleep(4)
 
     elif file_path.lower().endswith(".html"):
         # Handle HTML file
-        for _ in range(3):
+        stats["documents_sent_to_llamaparse"] += 1
+        log_entry = {
+            "timestamp": datetime.datetime.now().isoformat(),
+            "stage": "parse",
+            "filepath": file_path,
+            "status": "HTML_PROCESSING_ATTEMPT",
+            "reason": "Attempting to process HTML file.",
+        }
+        if detailed_log_path:
+            with open(detailed_log_path, "a") as f:
+                f.write(json.dumps(log_entry) + "\n")
+        for i in range(3):
+            if i > 0:
+                log_entry = {
+                    "timestamp": datetime.datetime.now().isoformat(),
+                    "stage": "parse",
+                    "filepath": file_path,
+                    "status": "HTML_RETRY",
+                    "reason": f"Retrying HTML processing (attempt {i + 1}).",
+                }
+                if detailed_log_path:
+                    with open(detailed_log_path, "a") as f:
+                        f.write(json.dumps(log_entry) + "\n")
             txt_file_path, title_tag = convert_html_to_markdown(file_path, out_folder)
             if title_tag != "Error parsing.":
+                log_entry = {
+                    "timestamp": datetime.datetime.now().isoformat(),
+                    "stage": "parse",
+                    "filepath": file_path,
+                    "status": "HTML_TO_TXT_SUCCESS",
+                    "reason": "Successfully converted HTML to TXT.",
+                }
+                if detailed_log_path:
+                    with open(detailed_log_path, "a") as f:
+                        f.write(json.dumps(log_entry) + "\n")
                 break
             print("Error converting HTML file. Retrying...")
+            log_entry = {
+                "timestamp": datetime.datetime.now().isoformat(),
+                "stage": "parse",
+                "filepath": file_path,
+                "status": "HTML_TO_TXT_FAILED",
+                "reason": "Failed to convert HTML to TXT. Retrying.",
+            }
+            if detailed_log_path:
+                with open(detailed_log_path, "a") as f:
+                    f.write(json.dumps(log_entry) + "\n")
             time.sleep(4)
 
     if title_tag != "Error parsing.":
+        log_entry = {
+            "timestamp": datetime.datetime.now().isoformat(),
+            "stage": "parse",
+            "filepath": file_path,
+            "status": "LLAMAPARSE_ATTEMPT",
+            "reason": "Attempting LlamaParse conversion.",
+        }
+        if detailed_log_path:
+            with open(detailed_log_path, "a") as f:
+                f.write(json.dumps(log_entry) + "\n")
         # try a maximum of 3 times to parse the txt file to md
-        for _ in range(3):
-            is_empty = parse_txt_to_md(txt_file_path, file_extension, title_tag)
+        for i in range(3):
+            is_empty = parse_txt_to_md(
+                txt_file_path, file_extension, stats, empty_llamaparse_files_counted, detailed_log_path, title_tag
+            )
             if not is_empty:
                 # remove the txt file
                 os.remove(txt_file_path)
+                stats["documents_successful_after_retries"] += 1
+                log_entry = {
+                    "timestamp": datetime.datetime.now().isoformat(),
+                    "stage": "parse",
+                    "filepath": file_path,
+                    "status": "LLAMAPARSE_SUCCESS_OR_RETRY_SUCCEEDED",
+                    "reason": "LlamaParse produced content or retry was successful.",
+                }
+                if detailed_log_path:
+                    with open(detailed_log_path, "a") as f:
+                        f.write(json.dumps(log_entry) + "\n")
                 return
             print("Error parsing TXT file to MD. Retrying...")
+            log_entry = {
+                "timestamp": datetime.datetime.now().isoformat(),
+                "stage": "parse",
+                "filepath": file_path,
+                "status": "LLAMAPARSE_EMPTY_RETRY",
+                "reason": f"LlamaParse returned empty content. Retrying (attempt {i + 1}).",
+            }
+            if detailed_log_path:
+                with open(detailed_log_path, "a") as f:
+                    f.write(json.dumps(log_entry) + "\n")
             time.sleep(4)
 
+    stats["documents_failed_after_retries"] += 1
+    log_entry = {
+        "timestamp": datetime.datetime.now().isoformat(),
+        "stage": "parse",
+        "filepath": file_path,
+        "status": "FAILED_AFTER_ALL_RETRIES",
+        "reason": "Document could not be processed after all LlamaParse retries.",
+    }
+    if detailed_log_path:
+        with open(detailed_log_path, "a") as f:
+            f.write(json.dumps(log_entry) + "\n")
     # move the txt file to the error folder
     error_folder = os.path.join(out_folder, "error")
     os.rename(txt_file_path, os.path.join(error_folder, os.path.basename(txt_file_path)))  # moving the file
     print(f"Error parsing TXT file to MD. Moved to {error_folder}")
 
 
-def process_directory(origin_path, out_folder):
+def process_directory(origin_path, out_folder, stats, empty_llamaparse_files_counted, detailed_log_path):
     """
     Processes all HTML and PDF files in the specified directory.
     """
+    files_processed_by_directory = 0
     for root, _dirs, files in os.walk(origin_path):
         if "error" in root:
             continue
@@ -568,7 +747,9 @@ def process_directory(origin_path, out_folder):
             if file.lower().endswith((".html", ".pdf")):
                 file_path = os.path.join(root, file)
                 print(f"Processing file: {file_path}")
-                process_file(file_path, out_folder)
+                process_file(file_path, out_folder, stats, empty_llamaparse_files_counted, detailed_log_path)
+                files_processed_by_directory += 1
+    return files_processed_by_directory
 
 
 def add_titles_tag(input_directory, out_folder):

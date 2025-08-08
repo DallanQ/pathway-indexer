@@ -1,4 +1,7 @@
+import json
 import os
+import time
+
 import dotenv
 from pinecone import Pinecone, ServerlessSpec
 from llama_index.core import Document
@@ -190,6 +193,15 @@ def main():
     """
     Main function to recreate the vector store and process documents.
     """
+    start_time = time.time()
+    stats = {
+        "average_nodes_per_file": 0,
+        "files_with_zero_nodes": 0,
+        "files_with_one_node": 0,
+        "files_with_more_than_one_node": 0,
+        "node_counts_per_file": {},
+    }
+
     try:
         print("Starting vector store recreation and document processing...")
         
@@ -217,7 +229,80 @@ def main():
         print(f"\n✅ Process completed successfully!")
         print(f"   - Total nodes processed: {len(nodes)}")
         print(f"   - Vector store ready for queries")
-        
+
+        for node in nodes:
+            filepath = node.metadata.get("filepath")
+            if filepath not in stats["node_counts_per_file"]:
+                stats["node_counts_per_file"][filepath] = 0
+            stats["node_counts_per_file"][filepath] += 1
+
+        for _filepath, count in stats["node_counts_per_file"].items():
+            if count == 0:
+                stats["files_with_zero_nodes"] += 1
+            elif count == 1:
+                stats["files_with_one_node"] += 1
+            else:
+                stats["files_with_more_than_one_node"] += 1
+
+        end_time = time.time()
+        execution_seconds = end_time - start_time
+        hours, rem = divmod(execution_seconds, 3600)
+        minutes, seconds = divmod(rem, 60)
+        hours_str = f"{int(hours)} hour" if int(hours) == 1 else f"{int(hours)} hours"
+        minutes_str = f"{int(minutes)} minute" if int(minutes) == 1 else f"{int(minutes)} minutes"
+        seconds_str = f"{int(seconds)} second" if int(seconds) == 1 else f"{int(seconds)} seconds"
+        stats["execution_time"] = f"{hours_str}, {minutes_str}, {seconds_str}"
+        # Calculate average nodes per file
+        if len(stats["node_counts_per_file"]) > 0:
+            stats["average_nodes_per_file"] = round(
+                sum(stats["node_counts_per_file"].values()) / len(stats["node_counts_per_file"]),
+                2
+            )
+        else:
+            stats["average_nodes_per_file"] = 0
+
+        # Write node_counts_per_file to a log file
+        node_counts_log_path = os.path.join(os.getenv("DATA_PATH"), "node_counts_log.json")
+        with open(node_counts_log_path, "w") as f:
+            json.dump(stats["node_counts_per_file"], f, indent=4)
+
+        # Append indexer metrics explanation to metrics_explanation.log
+        metrics_explanation_path = os.path.join(os.getenv("DATA_PATH"), "metrics_explanation.log")
+        indexer_explanation = f"""
+Indexer Metrics
+
+=> Actual Files with indexable content: {len(stats["node_counts_per_file"])}
+Number of markdown files loaded for indexing. Only {len(stats["node_counts_per_file"])} files had indexable content and were included in the final indexer metrics.
+
+=> Total nodes processed: {sum(stats["node_counts_per_file"].values())}
+Number of nodes (chunks of content) created and indexed from the markdown files.
+
+=> Average nodes per file: {stats["average_nodes_per_file"]}
+Average number of nodes per indexed file.
+
+=> Files with zero nodes: {stats["files_with_zero_nodes"]}
+Number of files that had no indexable content.
+
+=> Files with one node: {stats["files_with_one_node"]}
+Number of files that produced only one node.
+
+=> Files with more than one node: {stats["files_with_more_than_one_node"]}
+Number of files that produced more than one node.
+
+=> Node counts per file saved to: node_counts_log.json
+Node counts per file are logged for analysis.
+
+=> execution_time: {stats["execution_time"]}
+Time taken for the indexing process.
+"""
+        with open(metrics_explanation_path, "a") as f:
+            f.write(indexer_explanation)
+        # Print path relative to repo root, starting from DATA_PATH
+        rel_path = os.path.relpath(metrics_explanation_path, start=os.getcwd())
+        print(f"\nWhat do these numbers mean? See ./{rel_path}")
+        # Delete node_counts_per_file after metrics explanation
+        del stats["node_counts_per_file"]
+
         return index, retriever, nodes
         
     except Exception as e:

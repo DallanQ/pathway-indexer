@@ -57,7 +57,8 @@ def get_indexes():
     # Crawling Process
     acm_data = crawl_index(ACM_URL, acm_selectors)
     print("ACM data collected!")
-    print(f"Length of acm data: {len(acm_data)}")
+    feature/acm-indexing-with-logging
+    print(f"Length of ACM data: {len(acm_data)}")
     print()
 
     missionary_data = crawl_index(MISSIONARY_URL, missionary_selectors)

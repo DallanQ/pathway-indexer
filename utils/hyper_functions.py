@@ -522,7 +522,9 @@ def run_pipeline(documents, splitter, embed_model, vector_store, include_prev_ne
             node.text = node.metadata["context"]
             del node.metadata["context"]
 
-    url = nodes[0].metadata['url']
+    url = None
+    if nodes and 'url' in nodes[0].metadata:
+        url = nodes[0].metadata['url']
     sequence = 1
 
     for node in nodes:
@@ -532,7 +534,7 @@ def run_pipeline(documents, splitter, embed_model, vector_store, include_prev_ne
             print(f"Node without URL: {node.metadata}")
             continue
         
-        if url == node.metadata['url']:
+        if url and url == node.metadata.get('url'):
             node.metadata['sequence'] = sequence
             sequence += 1
         else:

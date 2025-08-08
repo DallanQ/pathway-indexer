@@ -267,11 +267,7 @@ def main():
         node_counts_log_path = os.path.join(os.getenv("DATA_PATH"), "node_counts_log.json")
         with open(node_counts_log_path, "w") as f:
             json.dump(stats["node_counts_per_file"], f, indent=4)
-        print(f"Node counts per file saved to: {os.path.relpath(node_counts_log_path, start=os.getcwd())}")
-        # Announcement after node counts log
-        metrics_explanation_path = "results.md"
-        print(f"\nWhat do these numbers mean? Check ./{metrics_explanation_path}")
-
+        print(f"Node counts per file saved to: {node_counts_log_path}")
         # Append indexer metrics explanation to metrics_explanation.log
         metrics_explanation_path = os.path.join(os.getenv("DATA_PATH"), "metrics_explanation.log")
         indexer_explanation = f"""

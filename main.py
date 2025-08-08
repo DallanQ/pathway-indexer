@@ -142,7 +142,7 @@ Total files processed by the directory parser (should match input count).
 => execution_time: {stats.get("execution_time", "N/A")}
 Total time taken for the pipeline run.
 --------------------------------------------------------
-    "
+    """
     with open(metrics_explanation_path, "w") as f:
         f.write(metrics_explanation)
     # Print path relative to repo root, starting from DATA_PATH

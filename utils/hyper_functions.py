@@ -39,37 +39,51 @@ class AltNodeParser(NodeParser):
 
     embed_prev_next_sentences: int = Field(
         default=0,
-        description=("Number of previous and next sentences to include when calculating embeddings."),
+        description=(
+            "Number of previous and next sentences to include when calculating embeddings."
+        ),
     )
 
     embed_prev_next_paragraphs: int = Field(
         default=0,
-        description=("Number of previous and next paragraphs to include when calculating embeddings."),
+        description=(
+            "Number of previous and next paragraphs to include when calculating embeddings."
+        ),
     )
 
     max_embed_length: int = Field(
         default=2048,
-        description=("Maximum length of text to embed. Used when embedding previous and next sentences or paragraphs."),
+        description=(
+            "Maximum length of text to embed. Used when embedding previous and next sentences or paragraphs."
+        ),
     )
 
     embed_index_headers: bool = Field(
         default=False,
-        description=("Include headers from the index page when calculating embeddings."),
+        description=(
+            "Include headers from the index page when calculating embeddings."
+        ),
     )
 
     embed_md_headers: bool = Field(
         default=False,
-        description=("Include headers from the markdown document when calculating embeddings."),
+        description=(
+            "Include headers from the markdown document when calculating embeddings."
+        ),
     )
 
     include_prev_next_paragraphs: int = Field(
         default=0,
-        description=("Number of previous and next paragraphs to include in text for the LLM."),
+        description=(
+            "Number of previous and next paragraphs to include in text for the LLM."
+        ),
     )
 
     max_include_length: int = Field(
         default=2048,
-        description=("Maximum length of text to pass to the LLM. Used when including previous and next paragraphs."),
+        description=(
+            "Maximum length of text to pass to the LLM. Used when including previous and next paragraphs."
+        ),
     )
 
     include_index_headers: bool = Field(
@@ -142,7 +156,9 @@ class AltNodeParser(NodeParser):
         nodes = get_paragraph_nodes(headers_paragraphs, node)
         # include previous and next paragraphs
         if self.include_prev_next_paragraphs > 0:
-            include_prev_next_contexts(nodes, self.include_prev_next_paragraphs, self.max_include_length)
+            include_prev_next_contexts(
+                nodes, self.include_prev_next_paragraphs, self.max_include_length
+            )
         # split by sentence, paragraph, or both
         sentence_nodes = []
         if self.split_by in ["sentence", "both"]:
@@ -157,7 +173,9 @@ class AltNodeParser(NodeParser):
             nodes = sentence_nodes
         else:  # paragraph or both
             if self.embed_prev_next_paragraphs > 0:
-                nodes = embed_prev_next(nodes, self.embed_prev_next_paragraphs, self.max_embed_length)
+                nodes = embed_prev_next(
+                    nodes, self.embed_prev_next_paragraphs, self.max_embed_length
+                )
             if self.split_by == "both":
                 nodes.extend(sentence_nodes)
         # embed index and/or markdown headers
@@ -184,7 +202,7 @@ def extract_index_metadata(node):
     """Split the document text into headers and content."""
 
     text = node.get_content(metadata_mode=MetadataMode.NONE)
-    parts = text.split("---\n")
+    parts = text.split("---\\n")
     # If there are no headers, return the document as-is
     if len(parts) < 3:
         return node
@@ -218,9 +236,8 @@ def extract_index_metadata(node):
 
     # Join the remaining parts as content
     # TODO! don't join the last part if its empty - make sure we don't still have unnecessary --- separators
-    content = "---\n".join(parts[2:])
+    content = "---\\n".join(parts[2:])
 
-    # Merge original metadata with parsed headers
     final_metadata = {**node.metadata, **headers}
 
     return TextNode(metadata=final_metadata, text=content)
@@ -231,12 +248,12 @@ def get_headers_and_paragraphs(node: BaseNode) -> list[str]:
 
     def is_table_row(line):
         # Check if line is part of a table (has | character and isn't a blockquote)
-        return "|" in line and not line.lstrip().startswith(">")
+        return '|' in line and not line.lstrip().startswith('>')
 
     def is_table_separator(line):
         # Check if line is a table header separator (contains only |, -, and spaces)
         stripped = line.strip()
-        return stripped and all(c in "|-: " for c in stripped)
+        return stripped and all(c in '|-: ' for c in stripped)
 
     # get text from the node
     text = node.get_content(metadata_mode=MetadataMode.NONE)
@@ -249,7 +266,7 @@ def get_headers_and_paragraphs(node: BaseNode) -> list[str]:
     # split text by newline
     for line in text.split("\n"):
         line = line.rstrip()
-
+        
         # Table handling
         if is_table_row(line) or is_table_separator(line):
             if not in_table:
@@ -282,7 +299,9 @@ def get_headers_and_paragraphs(node: BaseNode) -> list[str]:
                     paragraph_lines = []
                 results.append(line)
                 blank_line = False
-            elif re.match(ORDERED_LIST_ITEM_PATTERN, line) or re.match(UNORDERED_LIST_ITEM_PATTERN, line):
+            elif re.match(ORDERED_LIST_ITEM_PATTERN, line) or re.match(
+                UNORDERED_LIST_ITEM_PATTERN, line
+            ):
                 if blank_line and paragraph_lines:
                     paragraph_lines.append("")
                 paragraph_lines.append(line)
@@ -306,7 +325,8 @@ def get_headers_and_paragraphs(node: BaseNode) -> list[str]:
     # Handle orphan headers or short paragraphs
     for i in range(len(results) - 2):
         if results[i].startswith("# ") and (
-            (len(results[i + 1].split()) <= 5 and results[i + 2].startswith("# ")) or results[i + 1].startswith("# ")
+            (len(results[i + 1].split()) <= 5 and results[i + 2].startswith("# "))
+            or results[i + 1].startswith("# ")
         ):
             results[i] = results[i].lstrip("# ")
 
@@ -315,9 +335,10 @@ def get_headers_and_paragraphs(node: BaseNode) -> list[str]:
         if results[i] == results[i + 1]:
             results[i] = ""
         elif not results[i].startswith("#") and len(results[i].split()) <= 5:
-            results[i] = f"{results[i - 1]}\n{results[i]}"
+            results[i] = f"{results[i-1]}\n{results[i]}"
             results[i - 1] = ""
     return [result for result in results if result]
+
 
 
 def update_headers(par: str, headers: dict) -> None:
@@ -336,14 +357,15 @@ def update_headers(par: str, headers: dict) -> None:
             break
 
 
-def get_paragraph_nodes(headers_paragraphs: list[str], doc_node: BaseNode) -> list[TextNode]:
+def get_paragraph_nodes(
+    headers_paragraphs: list[str], doc_node: BaseNode
+) -> list[TextNode]:
     """Get paragraph nodes with header metadata from a list of headers
     and paragraphs and the original document node."""
 
     nodes = []
     headers = {}
     doc_metadata = {key: value for key, value in doc_node.metadata.items()}
-    # Ensure filepath is always preserved in node metadata
     filepath = doc_metadata.get("filepath")
     for par in headers_paragraphs:
         # if this is a header, update the headers
@@ -371,7 +393,9 @@ def _equal_headers(metadata1: dict, metadata2: dict) -> bool:
     return True
 
 
-def include_prev_next_contexts(nodes: list[TextNode], count: int, max_length: int) -> None:
+def include_prev_next_contexts(
+    nodes: list[TextNode], count: int, max_length: int
+) -> None:
     """
     Include up to count previous and next contexts in the context of each node
     while they have the same headers and the combined length is less than the max length.
@@ -390,7 +414,9 @@ def include_prev_next_contexts(nodes: list[TextNode], count: int, max_length: in
             if next_node and _equal_headers(node.metadata, next_node.metadata):
                 next_context = node_contexts[i + j]
             if len(prev_context) + len(node_context) + len(next_context) <= max_length:
-                node_context = f"{prev_context}\n\n{node_context}\n\n{next_context}".strip()
+                node_context = (
+                    f"{prev_context}\n\n{node_context}\n\n{next_context}".strip()
+                )
             else:
                 break
         node.metadata["context"] = node_context
@@ -409,7 +435,9 @@ def get_sentences(nodes: list[TextNode]) -> list[TextNode]:
     return sentence_nodes
 
 
-def embed_prev_next(nodes: list[TextNode], count: int, max_length: int) -> list[TextNode]:
+def embed_prev_next(
+    nodes: list[TextNode], count: int, max_length: int
+) -> list[TextNode]:
     """
     Include up to count previous and next texts in the text of each node
     while they have the same headers and the combined length is less than the max length.
@@ -449,7 +477,7 @@ def embed_metadata(nodes: list[TextNode], metadata_keys: list[str]):
             if value:
                 headers.append(value)
         if len(headers) > 0:
-            node.text = f"{' / '.join(headers)}\n\n{node.text}"
+            node.text = f"{'/ '.join(headers)}\n\n{node.text}"
 
 
 def include_metadata(nodes: list[TextNode], metadata_keys: list[str]):
@@ -462,7 +490,9 @@ def include_metadata(nodes: list[TextNode], metadata_keys: list[str]):
             if value:
                 headers.append(value)
         if len(headers) > 0:
-            node.metadata["context"] = f"{' / '.join(headers)}\n\n{node.metadata.get('context', '')}"
+            node.metadata["context"] = (
+                f"{'/ '.join(headers)}\n\n{node.metadata.get('context', '')}"
+            )
 
 
 def run_pipeline(documents, splitter, embed_model, vector_store, include_prev_next_rel):
@@ -492,28 +522,28 @@ def run_pipeline(documents, splitter, embed_model, vector_store, include_prev_ne
             node.text = node.metadata["context"]
             del node.metadata["context"]
 
-    url = nodes[0].metadata["url"]
+    url = nodes[0].metadata['url']
     sequence = 1
 
     for node in nodes:
+        
         # ignore files without a URL
-        if "url" not in node.metadata:
+        if 'url' not in node.metadata:
             print(f"Node without URL: {node.metadata}")
             continue
-
-        if url == node.metadata["url"]:
-            node.metadata["sequence"] = sequence
+        
+        if url == node.metadata['url']:
+            node.metadata['sequence'] = sequence
             sequence += 1
         else:
-            url = node.metadata["url"]
+            url = node.metadata['url']
             sequence = 1
-            node.metadata["sequence"] = sequence
+            node.metadata['sequence'] = sequence
             sequence += 1
 
     index.insert_nodes(nodes)
     print(f"Nodes inserted: {len(nodes)}")
     return index, nodes  # CHANGED
-
 
 def get_vector_store():
     api_key = os.getenv("PINECONE_API_KEY")

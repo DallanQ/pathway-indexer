@@ -3,11 +3,11 @@ import os
 import time
 
 import dotenv
+from pinecone import Pinecone, ServerlessSpec
 from llama_index.core import Document
 from llama_index.core.vector_stores.types import VectorStoreQueryMode
 from llama_index.embeddings.openai import OpenAIEmbedding
 from llama_index.vector_stores.pinecone import PineconeVectorStore
-from pinecone import Pinecone, ServerlessSpec
 
 from utils.hyper_functions import AltNodeParser, extract_index_metadata, run_pipeline
 
@@ -21,19 +21,14 @@ def recreate_pinecone_index():
     """
     # Initialize Pinecone client
     pc = Pinecone()
-
+    
     # Get index name from environment
     index_name = os.getenv("PINECONE_INDEX_NAME")
     if not index_name:
-
-        class PineconeIndexNameError(ValueError):
-            def __init__(self):
-                super().__init__("PINECONE_INDEX_NAME environment variable is required")
-
-        raise PineconeIndexNameError()
-
+        raise ValueError("PINECONE_INDEX_NAME environment variable is required")
+    
     print(f"Checking if index '{index_name}' exists...")
-
+    
     # Check if index exists
     try:
         existing_indexes = [index.name for index in pc.list_indexes()]
@@ -45,7 +40,7 @@ def recreate_pinecone_index():
             print(f"Index '{index_name}' does not exist.")
     except Exception as e:
         print(f"Error checking existing indexes: {e}")
-
+    
     # Create new index
     print(f"Creating new index '{index_name}'...")
     try:
@@ -53,7 +48,10 @@ def recreate_pinecone_index():
             name=index_name,
             dimension=3072,  # Using text-embedding-3-large dimensions
             metric="cosine",
-            spec=ServerlessSpec(cloud="aws", region="us-east-1"),
+            spec=ServerlessSpec(
+                cloud="aws",
+                region="us-east-1"
+            )
         )
         print(f"Index '{index_name}' created successfully.")
     except Exception as e:
@@ -68,17 +66,13 @@ def get_vector_store():
     api_key = os.getenv("PINECONE_API_KEY")
     index_name = os.getenv("PINECONE_INDEX_NAME")
     environment = os.getenv("PINECONE_ENVIRONMENT")
-
+    
     if not api_key or not index_name or not environment:
-
-        class PineconeEnvError(ValueError):
-            def __init__(self):
-                super().__init__(
-                    "Please set PINECONE_API_KEY, PINECONE_INDEX_NAME, and PINECONE_ENVIRONMENT in your environment variables or .env file"
-                )
-
-        raise PineconeEnvError()
-
+        raise ValueError(
+            "Please set PINECONE_API_KEY, PINECONE_INDEX_NAME, and PINECONE_ENVIRONMENT "
+            "in your environment variables or .env file"
+        )
+    
     store = PineconeVectorStore(
         api_key=api_key,
         index_name=index_name,
@@ -93,15 +87,10 @@ def load_documents():
     """
     datapath = os.getenv("DATA_PATH")
     if not datapath:
-
-        class DataPathError(ValueError):
-            def __init__(self):
-                super().__init__("DATA_PATH environment variable is required")
-
-        raise DataPathError()
-
+        raise ValueError("DATA_PATH environment variable is required")
+    
     origin_paths = [f"{datapath}out/from_html/", f"{datapath}out/from_pdf/"]
-
+    
     # Read the document names from the directories
     files_list = []
     for path in origin_paths:
@@ -109,10 +98,10 @@ def load_documents():
             files_list.extend([path + item for item in os.listdir(path)])
         else:
             print(f"Warning: Path {path} does not exist")
-
+    
     files_list.sort()
     print(f"Files list length: {len(files_list)}")
-
+    
     documents = []
     for filepath in files_list:
         try:
@@ -121,19 +110,19 @@ def load_documents():
                 documents.append(document)
         except Exception as e:
             print(f"Error reading file {filepath}: {e}")
-
+    
     # Extract metadata for each document
     documents = [extract_index_metadata(doc) for doc in documents]
-
+    
     # Print metadata keys found
     metadata_keys = set()
     for doc in documents:
         for key in doc.metadata:
             metadata_keys.add(key)
-
+    
     print("Metadata added to documents")
     print(f"Metadata keys found: {sorted(metadata_keys)}")
-
+    
     return documents
 
 
@@ -142,7 +131,7 @@ def setup_embedding_model():
     Setup the OpenAI embedding model.
     """
     embed_model_name = "text-embedding-3-large"
-
+    
     embed_model = OpenAIEmbedding(
         model=embed_model_name,
         embed_batch_size=100,
@@ -168,7 +157,7 @@ def setup_splitter():
     max_include_length = 700
     include_index_headers = False
     include_md_headers = True
-
+    
     splitter = AltNodeParser().from_defaults(
         split_by=split_by,
         embed_prev_next_sentences=embed_prev_next_sentences,
@@ -191,7 +180,7 @@ def create_retriever(index):
     query_mode = VectorStoreQueryMode.DEFAULT
     retriever_k = 35
     sparse_k = retriever_k * 5
-
+    
     retriever = index.as_retriever(
         vector_store_query_mode=query_mode,
         similarity_top_k=retriever_k,
@@ -215,31 +204,31 @@ def main():
 
     try:
         print("Starting vector store recreation and document processing...")
-
+        
         # Step 1: Recreate Pinecone index
         print("\n=== Step 1: Recreating Pinecone Index ===")
         recreate_pinecone_index()
-
+        
         # Step 2: Setup components
         print("\n=== Step 2: Setting up components ===")
         documents = load_documents()
         embed_model = setup_embedding_model()
         splitter = setup_splitter()
         vector_store = get_vector_store()
-
+        
         # Step 3: Run the processing pipeline
         print("\n=== Step 3: Running processing pipeline ===")
         print("Starting pipeline...")
         index, nodes = run_pipeline(documents, splitter, embed_model, vector_store, False)
         print("Pipeline finished!")
-
+        
         # Step 4: Create retriever
         print("\n=== Step 4: Creating retriever ===")
         retriever = create_retriever(index)
-
-        print("\n✅ Process completed successfully!")
+        
+        print(f"\n✅ Process completed successfully!")
         print(f"   - Total nodes processed: {len(nodes)}")
-        print("   - Vector store ready for queries")
+        print(f"   - Vector store ready for queries")
 
         for node in nodes:
             filepath = node.metadata.get("filepath")
@@ -266,10 +255,17 @@ def main():
         # Calculate average nodes per file
         if len(stats["node_counts_per_file"]) > 0:
             stats["average_nodes_per_file"] = round(
-                sum(stats["node_counts_per_file"].values()) / len(stats["node_counts_per_file"]), 2
+                sum(stats["node_counts_per_file"].values()) / len(stats["node_counts_per_file"]),
+                2
             )
         else:
             stats["average_nodes_per_file"] = 0
+
+        # Write node_counts_per_file to a log file
+        node_counts_log_path = os.path.join(os.getenv("DATA_PATH"), "node_counts_log.json")
+        with open(node_counts_log_path, "w") as f:
+            json.dump(stats["node_counts_per_file"], f, indent=4)
+
         # Append indexer metrics explanation to metrics_explanation.log
         metrics_explanation_path = os.path.join(os.getenv("DATA_PATH"), "metrics_explanation.log")
         indexer_explanation = f"""
@@ -308,7 +304,7 @@ Time taken for the indexing process.
         del stats["node_counts_per_file"]
 
         return index, retriever, nodes
-
+        
     except Exception as e:
         print(f"\n❌ Error in main process: {e}")
         raise

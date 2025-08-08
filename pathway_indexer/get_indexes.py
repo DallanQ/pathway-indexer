@@ -54,41 +54,43 @@ def get_indexes():
 
     HELP_SELECTOR = "#articleList"
 
+    # # Crawling Process
+    # acm_data = crawl_index(ACM_URL, acm_selectors)
+    # print("Acm data collected!")
+    # print(f"Lenght of acm data: {len(acm_data)}")
+    # print()
 
-    acm_data = crawl_index(ACM_URL, acm_selectors)
-    print("ACM data collected!")
-    print(f"Length of acm data: {len(acm_data)}")
-    print()
+    # TEST_COMMENT: missionary_data = crawl_index(MISSIONARY_URL, missionary_selectors)
+    # TEST_COMMENT: print("Missionary data collected!")
+    # TEST_COMMENT: print(f"Lenght of missionary data: {len(missionary_data)}")
+    # TEST_COMMENT: print()
 
-    missionary_data = crawl_index(MISSIONARY_URL, missionary_selectors)
-    print("Missionary data collected!")
-    print(f"Length of missionary data: {len(missionary_data)}")
-    print()
-
-    help_data = asyncio.run(get_help_links(HELP_URL, HELP_SELECTOR))
-    print("Help data collected!")
-    print(f"Length of help data: {len(help_data)}")
-    print()
+    # TEST_COMMENT: help_data = asyncio.run(get_help_links(HELP_URL, HELP_SELECTOR))
+    # TEST_COMMENT: print("Help data collected!")
+    # TEST_COMMENT: print(f"Lenght of help data: {len(help_data)}")
+    # TEST_COMMENT: print()
 
     student_services_data = asyncio.run(get_services_links(STUDENT_SERVICES_URL))
     print("Student Services data collected!")
-    print(f"Length of Student Services data: {len(student_services_data)}")
+    print(f"Lenght of Student Services data: {len(student_services_data)}")
     print()
 
-    with open(acm_path, "w", newline="", encoding="UTF-8") as csvfile:
-        writer = csv.writer(csvfile)
-        writer.writerow(["Section", "Subsection", "Title", "URL"])
-        writer.writerows(acm_data)
+    # Save the data
+    # TEST_COMMENT: with open(acm_path, "w", newline="", encoding="UTF-8") as csvfile:
+    # TEST_COMMENT:     writer = csv.writer(csvfile)
+    # TEST_COMMENT:     writer.writerow(["Section", "Subsection", "Title", "URL"])
+    # TEST_COMMENT:     # writer.writerows(acm_data)
 
-    with open(missionary_path, "w", newline="", encoding="UTF-8") as csvfile:
-        writer = csv.writer(csvfile)
-        writer.writerow(["Section", "Subsection", "Title", "URL"])
-        writer.writerows(missionary_data[2:])
+    # TEST_COMMENT: with open(missionary_path, "w", newline="", encoding="UTF-8") as csvfile:
+    # TEST_COMMENT:     writer = csv.writer(csvfile)
+    # TEST_COMMENT:     # write headers
+    # TEST_COMMENT:     writer.writerow(["Section", "Subsection", "Title", "URL"])
+    # TEST_COMMENT:     writer.writerows(missionary_data[2:])
 
-    with open(help_path, "w", newline="", encoding="UTF-8") as csvfile:
-        writer = csv.writer(csvfile)
-        writer.writerow(["Section", "Subsection", "Title", "URL"])
-        writer.writerows(help_data)
+    # TEST_COMMENT: with open(help_path, "w", newline="", encoding="UTF-8") as csvfile:
+    # TEST_COMMENT:     writer = csv.writer(csvfile)
+    # TEST_COMMENT:     writer.writerow(["Section", "Subsection", "Title", "URL"])
+    # TEST_COMMENT:     writer.writerows(help_data)
 
     with open(student_services_path, "w", newline="", encoding="UTF-8") as csvfile:
         writer = csv.writer(csvfile)
@@ -99,20 +101,14 @@ def get_indexes():
 
     index_path = os.path.join(DATA_PATH, "index")
 
-    # Load only the index CSVs that exist
-    dfs = []
-    for fname in ["acm.csv", "missionary.csv", "help.csv", "student_services.csv"]:
-        fpath = os.path.join(index_path, fname)
-        if os.path.exists(fpath):
-            dfs.append(pd.read_csv(fpath))
-        else:
-            print(f"Skipping missing index file: {fpath}")
+    # Load the data into Dataframes
+    # df = pd.read_csv(f"{index_path}/acm.csv")
+    # TEST_COMMENT: df2 = pd.read_csv(f"{index_path}/missionary.csv")
+    # TEST_COMMENT: df3 = pd.read_csv(f"{index_path}/help.csv")
+    df4 = pd.read_csv(f"{index_path}/student_services.csv")
 
-    if not dfs:
-        print("No index CSVs found. Exiting get_indexes().")
-        return
+    df = pd.concat([df4], ignore_index=True)  # df removed
 
-    df = pd.concat(dfs, ignore_index=True)
     df.fillna("Missing", inplace=True)
 
     # remove from the urls, the # and everything after it
@@ -120,11 +116,13 @@ def get_indexes():
 
     df_merged = (
         df.groupby("URL")
-        .agg({
-            "Section": list,
-            "Subsection": list,
-            "Title": list,
-        })
+        .agg(
+            {
+                "Section": list,
+                "Subsection": list,
+                "Title": list,
+            }
+        )
         .reset_index()
     )
 
@@ -134,6 +132,6 @@ def get_indexes():
     df_merged.to_csv(os.path.join(DATA_PATH, "all_links.csv"), index=False)
 
     print("All data collected and saved!")
-    print(f"All links saved in {DATA_PATH}all_links.csv")
+    print(f"All links saved in {DATA_PATH}/all_links.csv")
     print("Process finished! Links ready to be crawled.")
     print()

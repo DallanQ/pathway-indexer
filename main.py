@@ -137,7 +137,7 @@ Markdown files that contain only metadata (no actual content).
 All files were processed outside change detection.
 
 => files_processed_by_directory: {stats.get("files_processed_by_directory", "N/A")}
-Total files processed by the directory parser (should match input count).
+Total files processed by the directory parser (should match input count). It helps confirm that all expected files were parsed and converted, and that no files were skipped or missed by the parser logic.
 
 => execution_time: {stats.get("execution_time", "N/A")}
 Total time taken for the pipeline run.

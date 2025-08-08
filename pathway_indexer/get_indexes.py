@@ -54,45 +54,41 @@ def get_indexes():
 
     HELP_SELECTOR = "#articleList"
 
-    # ===== TEMPORARILY COMMENTED OUT FOR SINGLE LINK CRAWL =====
-    # acm_data = crawl_index(ACM_URL, acm_selectors)
-    # print("Acm data collected!")
-    # print(f"Length of acm data: {len(acm_data)}")
-    # print()
 
-    # missionary_data = crawl_index(MISSIONARY_URL, missionary_selectors)
-    # print("Missionary data collected!")
-    # print(f"Length of missionary data: {len(missionary_data)}")
-    # print()
+    acm_data = crawl_index(ACM_URL, acm_selectors)
+    print("ACM data collected!")
+    print(f"Length of acm data: {len(acm_data)}")
+    print()
 
-    # help_data = asyncio.run(get_help_links(HELP_URL, HELP_SELECTOR))
-    # print("Help data collected!")
-    # print(f"Length of help data: {len(help_data)}")
-    # print()
-    # ===== END TEMPORARY COMMENT BLOCK =====
+    missionary_data = crawl_index(MISSIONARY_URL, missionary_selectors)
+    print("Missionary data collected!")
+    print(f"Length of missionary data: {len(missionary_data)}")
+    print()
+
+    help_data = asyncio.run(get_help_links(HELP_URL, HELP_SELECTOR))
+    print("Help data collected!")
+    print(f"Length of help data: {len(help_data)}")
+    print()
 
     student_services_data = asyncio.run(get_services_links(STUDENT_SERVICES_URL))
     print("Student Services data collected!")
     print(f"Length of Student Services data: {len(student_services_data)}")
     print()
 
-    # ===== TEMPORARILY COMMENTED OUT FOR SINGLE LINK CRAWL =====
-    # with open(acm_path, "w", newline="", encoding="UTF-8") as csvfile:
-    #     writer = csv.writer(csvfile)
-    #     writer.writerow(["Section", "Subsection", "Title", "URL"])
-    #     # writer.writerows(acm_data)
+    with open(acm_path, "w", newline="", encoding="UTF-8") as csvfile:
+        writer = csv.writer(csvfile)
+        writer.writerow(["Section", "Subsection", "Title", "URL"])
+        writer.writerows(acm_data)
 
-    # with open(missionary_path, "w", newline="", encoding="UTF-8") as csvfile:
-    #     writer = csv.writer(csvfile)
-    #     # write headers
-    #     writer.writerow(["Section", "Subsection", "Title", "URL"])
-    #     writer.writerows(missionary_data[2:])
+    with open(missionary_path, "w", newline="", encoding="UTF-8") as csvfile:
+        writer = csv.writer(csvfile)
+        writer.writerow(["Section", "Subsection", "Title", "URL"])
+        writer.writerows(missionary_data[2:])
 
-    # with open(help_path, "w", newline="", encoding="UTF-8") as csvfile:
-    #     writer = csv.writer(csvfile)
-    #     writer.writerow(["Section", "Subsection", "Title", "URL"])
-    #     writer.writerows(help_data)
-    # ===== END TEMPORARY COMMENT BLOCK =====
+    with open(help_path, "w", newline="", encoding="UTF-8") as csvfile:
+        writer = csv.writer(csvfile)
+        writer.writerow(["Section", "Subsection", "Title", "URL"])
+        writer.writerows(help_data)
 
     with open(student_services_path, "w", newline="", encoding="UTF-8") as csvfile:
         writer = csv.writer(csvfile)

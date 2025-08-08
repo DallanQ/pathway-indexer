@@ -1,18 +1,15 @@
-import re
 import os
 import shutil
-import csv
 
 import pandas as pd
 
+from utils.calendar_format import calendar_format
 from utils.parser import (
     add_titles_tag,
     associate_markdown_with_metadata,
     attach_metadata_to_markdown_directories,
     process_directory,
 )
-
-from utils.calendar_format import calendar_format
 
 DATA_PATH = os.getenv("DATA_PATH")
 OUT_PATH = os.path.join(DATA_PATH, "out")
@@ -86,11 +83,7 @@ def analyze_file_changes(
         return current_df  # Process all files if no last output data
 
     last_df = pd.read_csv(last_output_data_path)
-    last_hash_dict = (
-        last_df[last_df["Content Type"] == "html"]
-        .set_index("URL")["Content Hash"]
-        .to_dict()
-    )
+    last_hash_dict = last_df[last_df["Content Type"] == "html"].set_index("URL")["Content Hash"].to_dict()
 
     # Apply hash check only to HTML files
     def has_changes(row):
@@ -105,9 +98,7 @@ def analyze_file_changes(
     for _, row in unchanged_html_files.iterrows():
         print("Skipping unchanged file:", row["Filepath"])
         pathname = os.path.basename(row["Filepath"]).replace(".html", ".md")
-        src_path = os.path.join(
-            last_data_json["last_folder_crawl"], "out", "from_html", pathname
-        )
+        src_path = os.path.join(last_data_json["last_folder_crawl"], "out", "from_html", pathname)
         dst_path = os.path.join(out_folder, "from_html", pathname)
 
         os.makedirs(os.path.dirname(dst_path), exist_ok=True)
@@ -146,9 +137,11 @@ def process_modified_files(
         return
 
     print("Starting file processing for modified files...")
+
     stats["files_processed_by_directory"] = process_directory(
         input_directory, out_folder, stats, empty_llamaparse_files_counted, detailed_log_path
     )  # convert the files to md
+  
     print("File processing for modified files completed.")
 
     add_titles_tag(input_directory, out_folder)
@@ -159,9 +152,12 @@ def process_modified_files(
         with open(excluded_domains_path, encoding="UTF-8") as f:
             excluded_domains = f.read().splitlines()
 
-    metadata_dict = associate_markdown_with_metadata(
-        input_directory, out_folder, metadata_csv, excluded_domains
-    )
+    all_links_path = os.path.join(DATA_PATH, metadata_csv)
+    if not os.path.exists(all_links_path):
+        print(f"Error: {all_links_path} not found. Cannot attach metadata.")
+        return
+
+    metadata_dict = associate_markdown_with_metadata(out_folder, all_links_path, excluded_domains)
     print("Metadata association completed.")
 
     print("Attaching metadata to Markdown files...")

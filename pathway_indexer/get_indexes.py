@@ -57,6 +57,7 @@ def get_indexes():
     # Crawling Process
     acm_data = crawl_index(ACM_URL, acm_selectors)
     print("ACM data collected!")
+    feature/acm-indexing-with-logging
     print(f"Length of ACM data: {len(acm_data)}")
     print()
 

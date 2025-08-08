@@ -92,6 +92,7 @@ def handle_http_error(response):
 
 
 async def crawl_csv(df, base_dir, output_file="output_data.csv", detailed_log_path=None):  # noqa: C901
+
     """Takes CSV file in the format Heading, Subheading, Title, URL and processes each URL."""
 
     # Define a base directory within the user's space
@@ -170,9 +171,11 @@ async def crawl_csv(df, base_dir, output_file="output_data.csv", detailed_log_pa
                 ):
                     # raise HTTPError
                     response.status_code = 403
+
                     log_status = "HTTP_ERROR"
                     log_reason = "Access forbidden (403) - using Playwright fallback"
                     handle_http_error(response)
+                    
                 elif "text/html" in content_type:
                     content = response.text.encode("utf-8")
                     text_content = response.text
@@ -244,6 +247,7 @@ async def crawl_csv(df, base_dir, output_file="output_data.csv", detailed_log_pa
                     datetime.datetime.now().isoformat(),
                     role,
                 ])
+
                 log_entry = {
                     "timestamp": datetime.datetime.now().isoformat(),
                     "stage": "crawl",
@@ -255,6 +259,7 @@ async def crawl_csv(df, base_dir, output_file="output_data.csv", detailed_log_pa
                 if detailed_log_path:
                     with open(detailed_log_path, "a") as f:
                         f.write(json.dumps(log_entry) + "\n")
+
                 break  # Exit retry loop after successful fetch
 
             except requests.exceptions.HTTPError as http_err:
@@ -282,12 +287,14 @@ async def crawl_csv(df, base_dir, output_file="output_data.csv", detailed_log_pa
                         datetime.datetime.now().isoformat(),
                         role,
                     ])
+
                     log_entry["status"] = "SUCCESS_WITH_PLAYWRIGHT_FALLBACK"
                     log_entry["reason"] = "Access forbidden (403), rescued with Playwright"
                     log_entry["filepath"] = html_filepath
                     if detailed_log_path:
                         with open(detailed_log_path, "a") as f:
                             f.write(json.dumps(log_entry) + "\n")
+
                     break  # Don't retry if it's a 403 error
                 else:
                     print(f"HTTP error occurred for {url}: {http_err}")
@@ -308,6 +315,7 @@ async def crawl_csv(df, base_dir, output_file="output_data.csv", detailed_log_pa
                             datetime.datetime.now().isoformat(),
                             role,
                         ])
+
                         log_entry["status"] = "FAILED_HTTP_ERROR"
                         log_entry["reason"] = f"HTTP Error {response.status_code}: {http_err}. Max retries reached."
                         if detailed_log_path:
@@ -342,6 +350,7 @@ async def crawl_csv(df, base_dir, output_file="output_data.csv", detailed_log_pa
                         datetime.datetime.now().isoformat(),
                         role,
                     ])
+
                     log_entry["status"] = "FAILED_REQUEST_ERROR"
                     log_entry["reason"] = f"Request Exception: {err}. Max retries reached."
                     if detailed_log_path:

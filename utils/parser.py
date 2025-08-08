@@ -74,7 +74,7 @@ def clean_markdown(text):
     text = re.sub(r"^\| Information \|\n", "", text, flags=re.MULTILINE)
     text = re.sub(r"\*\s*(Home|Knowledge Base - Home|KA-\d+)\s*\n", "", text)
     text = re.sub(
-        r"(You're offline.*?Knowledge Articles|Contoso, Ltd\.|BYU-Pathway Worldwide|Toggle navigation[.\w\s\*\+\-\: ]+|Search Filter|Search\n|Knowledge Article Key:)",
+        r"(You're offline.*?Knowledge Articles|Contoso, Ltd\.|BYU-Pathway Worldwide|Toggle navigation[.\w\s\*\+\-\:]+|Search Filter|Search\n|Knowledge Article Key:)",
         "",
         text,
     )
@@ -384,6 +384,18 @@ def parse_txt_to_md(file_path, file_extension, stats, empty_llamaparse_files_cou
         print(f"Final content for {os.path.basename(file_path)} is empty. Moving to error.")
         return True  # True indicates failure/empty
 
+    final_content = "\n\n".join([doc.text for doc in documents])
+
+    # If content from LlamaParse is empty, revert to original content
+    if is_empty_content(final_content):
+        final_content = content
+
+    # If the final content (even after reverting) is empty, then it's a failure
+    if is_empty_content(final_content):
+        print(f"Final content for {os.path.basename(file_path)} is empty. Moving to error.")
+        return True  # True indicates failure/empty
+
+    # base_filename = os.path.basename(file_path)
     out_name = file_path.replace(".txt", ".md")
 
     title_tag = clean_title(title_tag)
@@ -410,21 +422,17 @@ def parse_txt_to_md(file_path, file_extension, stats, empty_llamaparse_files_cou
     return False
 
 
-
-def associate_markdown_with_metadata(data_path, markdown_dirs, csv_file, excluded_domains):
+def associate_markdown_with_metadata(markdown_dirs, csv_path, excluded_domains):
     """
     Associates Markdown files with metadata from a CSV file.
 
     Parameters:
     - markdown_dirs (list): List of directories containing Markdown files.
-    - csv_file (str): Path to the CSV file containing metadata.
+    - csv_path (str): Path to the CSV file containing metadata.
 
     Returns:
     - dict: Mapping of Markdown file paths to their corresponding metadata.
     """
-    # create the csv_path and open it, the data_path is related to the root but has
-    csv_path = os.path.join(data_path, csv_file)
-
     all_files = get_files(markdown_dirs)
     # Read the CSV file and store the file paths, URLs, headings, and subheadings in a dictionary
     file_metadata_mapping = {}
@@ -494,7 +502,7 @@ def associate_markdown_with_metadata(data_path, markdown_dirs, csv_file, exclude
             no_metadata.append(markdown_path)
 
     # Guardamos en CSV las rutas de Markdown sin metadata
-    no_metadata_csv_path = os.path.join(data_path, "no_metadata.csv")
+    no_metadata_csv_path = os.path.join(os.path.dirname(csv_path), "no_metadata.csv")
     with open(no_metadata_csv_path, mode="w", newline="", encoding="utf-8") as nm_file:
         writer = csv.writer(nm_file)
         writer.writerow(["markdown_path"])

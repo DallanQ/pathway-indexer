@@ -87,7 +87,11 @@ async def fetch_content_from_student_services(urls):
     return content
 
 
-async def crawl_csv(df, base_dir, output_file="output_data.csv", detailed_log_path=None):
+def handle_http_error(response):
+    raise requests.exceptions.HTTPError(response=response)
+
+
+async def crawl_csv(df, base_dir, output_file="output_data.csv", detailed_log_path=None):  # noqa: C901
     """Takes CSV file in the format Heading, Subheading, Title, URL and processes each URL."""
 
     # Define a base directory within the user's space
@@ -103,12 +107,13 @@ async def crawl_csv(df, base_dir, output_file="output_data.csv", detailed_log_pa
 
     output_data = []
 
-    async def process_row(row):
-        url = row[0]
-        heading = row[1]
-        sub_heading = row[2]
-        title = row[3]
-        filename = row[4]
+    async def process_row(row):  # noqa: C901
+        url = row["URL"]
+        heading = row["Section"]
+        sub_heading = row["Subsection"]
+        title = row["Title"]
+        filename = row["filename"]
+        role = row["Role"]
 
         if "sharepoint.com" in url or url == "https://www.byupathway.edu/pathwayconnect-block-academic-calendar":
             return
@@ -167,7 +172,7 @@ async def crawl_csv(df, base_dir, output_file="output_data.csv", detailed_log_pa
                     response.status_code = 403
                     log_status = "HTTP_ERROR"
                     log_reason = "Access forbidden (403) - using Playwright fallback"
-                    raise requests.exceptions.HTTPError
+                    handle_http_error(response)
                 elif "text/html" in content_type:
                     content = response.text.encode("utf-8")
                     text_content = response.text
@@ -184,7 +189,7 @@ async def crawl_csv(df, base_dir, output_file="output_data.csv", detailed_log_pa
                         soup = BeautifulSoup(content, "html.parser")
                         try:
                             content = soup.find("article", class_="main-content").prettify()
-                        except Exception:
+                        except AttributeError:
                             print("Error with ", url)
                             log_status = "PARSE_ERROR"
                             log_reason = "Error finding main content in HTML"
@@ -221,7 +226,7 @@ async def crawl_csv(df, base_dir, output_file="output_data.csv", detailed_log_pa
                     filepath = os.path.join(crawl_path, "others", f"{filename}.{file_extension}")
                     content = response.content
                     with open(filepath, "wb") as f:
-                        f.write(response.content)
+                        f.write(content)
                     log_filepath = filepath
 
                 # Create content hash
@@ -237,6 +242,7 @@ async def crawl_csv(df, base_dir, output_file="output_data.csv", detailed_log_pa
                     content_type.split("/")[1].split(";")[0],
                     content_hash,
                     datetime.datetime.now().isoformat(),
+                    role,
                 ])
                 log_entry = {
                     "timestamp": datetime.datetime.now().isoformat(),
@@ -274,6 +280,7 @@ async def crawl_csv(df, base_dir, output_file="output_data.csv", detailed_log_pa
                         "text/html",
                         None,
                         datetime.datetime.now().isoformat(),
+                        role,
                     ])
                     log_entry["status"] = "SUCCESS_WITH_PLAYWRIGHT_FALLBACK"
                     log_entry["reason"] = "Access forbidden (403), rescued with Playwright"
@@ -299,6 +306,7 @@ async def crawl_csv(df, base_dir, output_file="output_data.csv", detailed_log_pa
                             str(response.status_code),
                             None,
                             datetime.datetime.now().isoformat(),
+                            role,
                         ])
                         log_entry["status"] = "FAILED_HTTP_ERROR"
                         log_entry["reason"] = f"HTTP Error {response.status_code}: {http_err}. Max retries reached."
@@ -332,6 +340,7 @@ async def crawl_csv(df, base_dir, output_file="output_data.csv", detailed_log_pa
                         "Error",
                         None,
                         datetime.datetime.now().isoformat(),
+                        role,
                     ])
                     log_entry["status"] = "FAILED_REQUEST_ERROR"
                     log_entry["reason"] = f"Request Exception: {err}. Max retries reached."
@@ -358,6 +367,7 @@ async def crawl_csv(df, base_dir, output_file="output_data.csv", detailed_log_pa
             "Content Type",
             "Content Hash",
             "Last Update",
+            "Role",
         ],
     )
     # Filtering rows where 'Content Hash' is None

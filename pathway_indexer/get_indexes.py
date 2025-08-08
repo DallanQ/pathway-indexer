@@ -1,3 +1,4 @@
+import asyncio
 import csv
 import os
 
@@ -12,7 +13,6 @@ from utils.indexes import (
     get_services_links,
 )
 from utils.tools import generate_hash_filename
-import asyncio
 
 dotenv.load_dotenv()
 
@@ -54,60 +54,64 @@ def get_indexes():
 
     HELP_SELECTOR = "#articleList"
 
-    # # Crawling Process
-    # acm_data = crawl_index(ACM_URL, acm_selectors)
-    # print("Acm data collected!")
-    # print(f"Lenght of acm data: {len(acm_data)}")
-    # print()
+    # Crawling Process
+    # TEST_COMMENT: acm_data = crawl_index(ACM_URL, acm_selectors)
+    # TEST_COMMENT: print("ACM data collected!")
+    # TEST_COMMENT: print(f"Length of acm data: {len(acm_data)}")
+    # TEST_COMMENT: print()
 
     # TEST_COMMENT: missionary_data = crawl_index(MISSIONARY_URL, missionary_selectors)
     # TEST_COMMENT: print("Missionary data collected!")
-    # TEST_COMMENT: print(f"Lenght of missionary data: {len(missionary_data)}")
+    # TEST_COMMENT: print(f"Length of missionary data: {len(missionary_data)}")
     # TEST_COMMENT: print()
 
     # TEST_COMMENT: help_data = asyncio.run(get_help_links(HELP_URL, HELP_SELECTOR))
     # TEST_COMMENT: print("Help data collected!")
-    # TEST_COMMENT: print(f"Lenght of help data: {len(help_data)}")
+    # TEST_COMMENT: print(f"Length of help data: {len(help_data)}")
     # TEST_COMMENT: print()
 
     student_services_data = asyncio.run(get_services_links(STUDENT_SERVICES_URL))
     print("Student Services data collected!")
-    print(f"Lenght of Student Services data: {len(student_services_data)}")
+    print(f"Length of Student Services data: {len(student_services_data)}")
     print()
 
     # Save the data
     # TEST_COMMENT: with open(acm_path, "w", newline="", encoding="UTF-8") as csvfile:
     # TEST_COMMENT:     writer = csv.writer(csvfile)
-    # TEST_COMMENT:     writer.writerow(["Section", "Subsection", "Title", "URL"])
-    # TEST_COMMENT:     # writer.writerows(acm_data)
+    # TEST_COMMENT:     writer.writerow(["Section", "Subsection", "Title", "URL", "Role"])
+    # TEST_COMMENT:     for row in acm_data:
+    # TEST_COMMENT:         writer.writerow([*row, "ACM"])
 
     # TEST_COMMENT: with open(missionary_path, "w", newline="", encoding="UTF-8") as csvfile:
     # TEST_COMMENT:     writer = csv.writer(csvfile)
     # TEST_COMMENT:     # write headers
-    # TEST_COMMENT:     writer.writerow(["Section", "Subsection", "Title", "URL"])
-    # TEST_COMMENT:     writer.writerows(missionary_data[2:])
+    # TEST_COMMENT:     writer.writerow(["Section", "Subsection", "Title", "URL", "Role"])
+    # TEST_COMMENT:     for row in missionary_data[2:]:
+    # TEST_COMMENT:         writer.writerow([*row, "missionary"])
 
     # TEST_COMMENT: with open(help_path, "w", newline="", encoding="UTF-8") as csvfile:
     # TEST_COMMENT:     writer = csv.writer(csvfile)
-    # TEST_COMMENT:     writer.writerow(["Section", "Subsection", "Title", "URL"])
-    # TEST_COMMENT:     writer.writerows(help_data)
+    # TEST_COMMENT:     writer.writerow(["Section", "Subsection", "Title", "URL", "Role"])
+    # TEST_COMMENT:     for row in help_data:
+    # TEST_COMMENT:         writer.writerow([*row, "missionary"])
 
     with open(student_services_path, "w", newline="", encoding="UTF-8") as csvfile:
         writer = csv.writer(csvfile)
-        writer.writerow(["Section", "Subsection", "Title", "URL"])
-        writer.writerows(student_services_data)
+        writer.writerow(["Section", "Subsection", "Title", "URL", "Role"])
+        for row in student_services_data:
+            writer.writerow([*row, "missionary"])
 
     # *****Create the final dataframe*****
 
     index_path = os.path.join(DATA_PATH, "index")
 
     # Load the data into Dataframes
-    # df = pd.read_csv(f"{index_path}/acm.csv")
+    # TEST_COMMENT: df = pd.read_csv(f"{index_path}/acm.csv")
     # TEST_COMMENT: df2 = pd.read_csv(f"{index_path}/missionary.csv")
     # TEST_COMMENT: df3 = pd.read_csv(f"{index_path}/help.csv")
     df4 = pd.read_csv(f"{index_path}/student_services.csv")
 
-    df = pd.concat([df4], ignore_index=True)  # df removed
+    df = pd.concat([df4], ignore_index=True)
 
     df.fillna("Missing", inplace=True)
 
@@ -116,13 +120,12 @@ def get_indexes():
 
     df_merged = (
         df.groupby("URL")
-        .agg(
-            {
-                "Section": list,
-                "Subsection": list,
-                "Title": list,
-            }
-        )
+        .agg({
+            "Section": list,
+            "Subsection": list,
+            "Title": list,
+            "Role": "first",
+        })
         .reset_index()
     )
 

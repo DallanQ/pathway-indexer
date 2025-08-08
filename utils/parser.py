@@ -51,32 +51,32 @@ def clean_markdown(text):
     # Remove inline code backticks (`text`)
     text = re.sub(r"`+", "", text)
 
-    text = re.sub(r"\[Print\]\(javascript:window\.print\(\)\)", "", text)
+    text = re.sub(r""\[Print\]\(javascript:window\.print\(\)\)""", "", text)
 
     # Remove list of links with same anchors
     text = re.sub(r"(?:(https?:\/\/[^\s]+)\s+){2,}", "", text)  # Remove repeated links
 
     # Replace [link](#) and [link](url) with link text only
-    text = re.sub(r"\[([^\]]+)\]\(([^)]+)\)", r"\1", text)
+    text = re.sub(r""\[([^\]]+)\]\(([^)]+)\)""", r"\1", text)
 
     # Remove lists of links to the same page (e.g., [All](#) [Web Pages](#))
-    text = re.sub(r"(\[([^\]]+)\]\(#\))+(?:\s|,)*", "", text)
+    text = re.sub(r""\[([^\]]+)\]\(#\)\(?:\s|,\)*""", "", text)
 
     # Regular expression to remove unnecessary text from
     # knowledge base articles
     # Remove specific table headers
-    text = re.sub(r"\| \*\*Bot Information\*\* \|\n\| --- \|", "", text)
-    text = re.sub(r"\| \*\*Information\*\* \|\n\| --- \|", "", text)
-    text = re.sub(r"Views:\n\n\|\s*Article Overview\s*\|\s*\n\|\s*---\s*\|\s*\n\|.*?\|", "", text, flags=re.DOTALL)
-    text = re.sub(r"\|\s*Information\s*\|\s*\n\|\s*---\s*\|\s*\n\|.*?\|", "", text, flags=re.DOTALL)
-    text = re.sub(r"\|\s*Bot Information\s*\|\s*\n\|\s*---\s*\|\s*\n\|.*?\|", "", text, flags=re.DOTALL)
+    text = re.sub(r"\| \*\*Bot Information\*\* \|\n\| ---\|", "", text)
+    text = re.sub(r"\| \*\*Information\*\* \|\n\| ---\|", "", text)
+    text = re.sub(r"Views:\n\n\|\s*Article Overview\s*\|\s*\n\|\s*---\|\s*\|.*?\|", "", text, flags=re.DOTALL)
+    text = re.sub(r"\|\s*Information\s*\|\s*\n\|\s*---\|\s*\|.*?\|", "", text, flags=re.DOTALL)
+    text = re.sub(r"\|\s*Bot Information\s*\|\s*\n\|\s*---\|\s*\|.*?\|", "", text, flags=re.DOTALL)
     text = re.sub(r"\n\s*\*\*Information\*\*\s*\n", "\n", text)
-    text = re.sub(r"##? Views:\n\n\| \*\*Article Overview\*\* \|\n\| --- \|\n\|.*?\|", "", text, flags=re.DOTALL)
-    text = re.sub(r"Views:\n\n\| \*\*Article Overview\*\* \|\n\| --- \|\n\|.*?\|", "", text, flags=re.DOTALL)
+    text = re.sub(r"##? Views:\n\n\| \*\*Article Overview\*\* \|\n\| ---\|\n\|.*?\|", "", text, flags=re.DOTALL)
+    text = re.sub(r"Views:\n\n\| \*\*Article Overview\*\* \|\n\| ---\|\n\|.*?\|", "", text, flags=re.DOTALL)
     text = re.sub(r"^\| Information \|\n", "", text, flags=re.MULTILINE)
     text = re.sub(r"\*\s*(Home|Knowledge Base - Home|KA-\d+)\s*\n", "", text)
     text = re.sub(
-        r"(You're offline.*?Knowledge Articles|Contoso, Ltd\.|BYU-Pathway Worldwide|Toggle navigation[.\w\s\*\+\-\:]+|Search Filter|Search\n|Knowledge Article Key:)",
+        r"(You're offline.*?Knowledge Articles|Contoso, Ltd\.|BYU-Pathway Worldwide|Toggle navigation[.\w\s\*\+\-\: ]+|Search Filter|Search\n|Knowledge Article Key:)",
         "",
         text,
     )
@@ -93,7 +93,8 @@ def clean_markdown(text):
     # text = re.sub(r"(Skip to content|Menu|[*+-].*)\n", '', text, flags=re.MULTILINE)
 
     # Remove broken links
-    text = re.sub(r"\[([^\]]+)\]\.\n\n\((http[^\)]+)\) \(([^)]+)\)\.", r"\1 (\3).", text)
+    text = re.sub(r""\[([^\]]+)\]\.\n\n\((http[^)]+)\) \(([^)]+)\)\."
+    ", r"\1 (\3).\n", text)
 
     # Remove consecutive blank lines
     text = re.sub(r"\n\s*\n\s*\n", "\n\n", text)
@@ -153,7 +154,7 @@ def clean_html(soup):
         title_header.string = title_text
         content.insert(0, title_header)
 
-    return content or soup  # Return the cleaned content or the entire soup as a last resort
+    return content or soup  # Return the cleaned content or the entire soup as a fallback
 
 
 def clean_text(text):
@@ -331,7 +332,7 @@ def has_markdown_tables(content):
     return all(re.search(pattern, content, re.MULTILINE) for pattern in table_patterns)
 
 
-def parse_txt_to_md(file_path, file_extension, stats, empty_llamaparse_files_counted, detailed_log_path, title_tag=""):
+def parse_txt_to_md(file_path, file_extension, stats, empty_llamaparse_files_counted, detailed_log_path, title_tag=""): 
     """
     Parses a .txt file to a Markdown (.md) file using LlamaParse, with detailed logging.
     """
@@ -379,31 +380,25 @@ def parse_txt_to_md(file_path, file_extension, stats, empty_llamaparse_files_cou
             with open(detailed_log_path, "a") as f:
                 f.write(json.dumps(log_entry) + "\n")
 
-    is_empty = all(is_empty_content(doc.text) for doc in documents)
+    final_content = "\n\n".join([doc.text for doc in documents])
 
-    if is_empty and file_path not in empty_llamaparse_files_counted:
-        stats["documents_empty_from_llamaparse"] += 1
-        empty_llamaparse_files_counted.add(file_path)
-        log_entry = {
-            "timestamp": datetime.datetime.now().isoformat(),
-            "stage": "parse_txt_to_md",
-            "filepath": file_path,
-            "status": "LLAMAPARSE_EMPTY",
-            "message": "LlamaParse returned empty content for this file.",
-        }
-        if detailed_log_path:
-            with open(detailed_log_path, "a") as f:
-                f.write(json.dumps(log_entry) + "\n")
+    # If content from LlamaParse is empty, revert to original content
+    if is_empty_content(final_content):
+        final_content = content
+
+    # If the final content (even after reverting) is empty, then it's a failure
+    if is_empty_content(final_content):
+        print(f"Final content for {os.path.basename(file_path)} is empty. Moving to error.")
+        return True  # True indicates failure/empty
 
     out_name = file_path.replace(".txt", ".md")
+
     title_tag = clean_title(title_tag)
 
     with open(out_name, "w", encoding="utf-8") as f:
         if title_tag:
             f.write(f"title: {title_tag}\n")
-        for doc in documents:
-            f.write(doc.text)
-            f.write("\n\n")
+        f.write(final_content)
         print(f"Parsed TXT to MD and saved to: {out_name}")
 
     stats["md_files_generated"] += 1
@@ -413,13 +408,14 @@ def parse_txt_to_md(file_path, file_extension, stats, empty_llamaparse_files_cou
         "stage": "parse_txt_to_md",
         "filepath": file_path,
         "status": "FINISHED",
-        "message": f"Finished TXT to MD parsing. Empty: {is_empty}",
+        "message": f"Finished TXT to MD parsing. Empty: {is_empty_content(final_content)}",
     }
     if detailed_log_path:
         with open(detailed_log_path, "a") as f:
             f.write(json.dumps(log_entry) + "\n")
 
-    return is_empty
+    return False
+
 
 
 def associate_markdown_with_metadata(data_path, markdown_dirs, csv_file, excluded_domains):
@@ -452,6 +448,7 @@ def associate_markdown_with_metadata(data_path, markdown_dirs, csv_file, exclude
                 "heading": clean_text(row["Section"]),
                 "subheading": (clean_text(row["Subsection"]) if clean_text(row["Subsection"]) != "Missing" else ""),
                 "title": clean_text(row["Title"]),
+                "role": row["Role"],
             }
 
     # Now go through the markdown files in each directory and associate them with the metadata
@@ -516,6 +513,7 @@ def associate_markdown_with_metadata(data_path, markdown_dirs, csv_file, exclude
         print(f"{path}: {meta}")
 
     return markdown_metadata_mapping
+
 
 
 def remove_existing_yaml_frontmatter(content):

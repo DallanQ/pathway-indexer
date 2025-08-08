@@ -46,7 +46,7 @@ def main():
         "total_documents_crawled": 0,
         "unique_files_processed": 0,
         "documents_sent_to_llamaparse": 0,
-        "documents_empty_from_llamaparse": 0,
+        "documents_empty_from_llamaparse": 0,  # formerly rescued_by_fallback
         "documents_successful_after_retries": 0,  # formerly rescued_by_fallback
         "documents_failed_after_retries": 0,  # formerly failed_after_fallback
         "md_files_generated": 0,
@@ -67,7 +67,7 @@ def main():
     print("Initializing JSON file...")
     last_data_json = initialize_json_file(detail_json_path, output_data_path)
 
-    print("Getting indexes...\n")
+    print("===>Getting indexes...\n")
     get_indexes()
 
     print("Crawler Started...\n")
@@ -137,12 +137,12 @@ Markdown files that contain only metadata (no actual content).
 All files were processed outside change detection.
 
 => files_processed_by_directory: {stats.get("files_processed_by_directory", "N/A")}
-Total files processed by the directory parser (should match input count). It helps confirm that all expected files were parsed and converted, and that no files were skipped or missed by the parser logic.
+Total files processed by the directory parser (should match input count).
 
 => execution_time: {stats.get("execution_time", "N/A")}
 Total time taken for the pipeline run.
 --------------------------------------------------------
-    """
+    "
     with open(metrics_explanation_path, "w") as f:
         f.write(metrics_explanation)
     # Print path relative to repo root, starting from DATA_PATH

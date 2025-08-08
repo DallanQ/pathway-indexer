@@ -202,7 +202,7 @@ def extract_index_metadata(node):
     """Split the document text into headers and content."""
 
     text = node.get_content(metadata_mode=MetadataMode.NONE)
-    parts = text.split("---\\n")
+    parts = text.split("---\n")
     # If there are no headers, return the document as-is
     if len(parts) < 3:
         return node
@@ -236,11 +236,9 @@ def extract_index_metadata(node):
 
     # Join the remaining parts as content
     # TODO! don't join the last part if its empty - make sure we don't still have unnecessary --- separators
-    content = "---\\n".join(parts[2:])
+    content = "---\n".join(parts[2:])
 
-    final_metadata = {**node.metadata, **headers}
-
-    return TextNode(metadata=final_metadata, text=content)
+    return TextNode(metadata=headers, text=content)
 
 
 def get_headers_and_paragraphs(node: BaseNode) -> list[str]:
@@ -366,7 +364,6 @@ def get_paragraph_nodes(
     nodes = []
     headers = {}
     doc_metadata = {key: value for key, value in doc_node.metadata.items()}
-    filepath = doc_metadata.get("filepath")
     for par in headers_paragraphs:
         # if this is a header, update the headers
         if par.startswith("#"):
@@ -377,8 +374,6 @@ def get_paragraph_nodes(
                 **doc_metadata,
                 "context": par,
             }
-            if filepath is not None:
-                metadata["filepath"] = filepath
             node = TextNode(metadata=metadata, text=par)
             nodes.append(node)
     return nodes
@@ -477,7 +472,7 @@ def embed_metadata(nodes: list[TextNode], metadata_keys: list[str]):
             if value:
                 headers.append(value)
         if len(headers) > 0:
-            node.text = f"{'/ '.join(headers)}\n\n{node.text}"
+            node.text = f"{' / '.join(headers)}\n\n{node.text}"
 
 
 def include_metadata(nodes: list[TextNode], metadata_keys: list[str]):
@@ -491,7 +486,7 @@ def include_metadata(nodes: list[TextNode], metadata_keys: list[str]):
                 headers.append(value)
         if len(headers) > 0:
             node.metadata["context"] = (
-                f"{'/ '.join(headers)}\n\n{node.metadata.get('context', '')}"
+                f"{' / '.join(headers)}\n\n{node.metadata.get('context', '')}"
             )
 
 
@@ -531,6 +526,7 @@ def run_pipeline(documents, splitter, embed_model, vector_store, include_prev_ne
         
         # ignore files without a URL
         if 'url' not in node.metadata:
+            print(f"Node without URL: {node.metadata}")
             continue
         
         if url and url == node.metadata.get('url'):

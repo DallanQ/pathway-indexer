@@ -51,16 +51,16 @@ def clean_markdown(text):
     # Remove inline code backticks (`text`)
     text = re.sub(r"`+", "", text)
 
-    text = re.sub(r""\[Print\]\(javascript:window\.print\(\)\)""", "", text)
+    text = re.sub(r"\[Print\]\(javascript:window\.print\(\)\)", "", text)
 
     # Remove list of links with same anchors
     text = re.sub(r"(?:(https?:\/\/[^\s]+)\s+){2,}", "", text)  # Remove repeated links
 
     # Replace [link](#) and [link](url) with link text only
-    text = re.sub(r""\[([^\]]+)\]\(([^)]+)\)""", r"\1", text)
+    text = re.sub(r"\[([^\]]+)\]\(([^)]+)\)", r"\1", text)
 
     # Remove lists of links to the same page (e.g., [All](#) [Web Pages](#))
-    text = re.sub(r""\[([^\]]+)\]\(#\)\(?:\s|,\)*""", "", text)
+    text = re.sub(r"\[([^\]]+)\]\(#\)\(?:\s|,\)*", "", text)
 
     # Regular expression to remove unnecessary text from
     # knowledge base articles
@@ -93,8 +93,7 @@ def clean_markdown(text):
     # text = re.sub(r"(Skip to content|Menu|[*+-].*)\n", '', text, flags=re.MULTILINE)
 
     # Remove broken links
-    text = re.sub(r""\[([^\]]+)\]\.\n\n\((http[^)]+)\) \(([^)]+)\)\."
-    ", r"\1 (\3).\n", text)
+    text = re.sub(r"[([^\]]+)]\.\n\n\((http[^)]+)\) \(([^)]+)\)\.", r"\1 (\3).\n", text)
 
     # Remove consecutive blank lines
     text = re.sub(r"\n\s*\n\s*\n", "\n\n", text)

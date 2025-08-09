@@ -128,10 +128,18 @@ def process_modified_files(
     """
     if is_directory_empty(input_directory):
         print("No modified files found; skipping file processing.")
-        return 0, 0, 0, 0, 0, 0
+        return 0, 0, 0, 0, 0, 0, 0
 
     print("Starting file processing for modified files...")
-    llama_parse_count, indexed_count, empty_files_count, documents_retried, documents_rescued_by_fallback, documents_failed_after_fallback = process_directory(
+    (
+        llama_parse_count,
+        indexed_count,
+        empty_files_count,
+        documents_retried,
+        documents_rescued_by_fallback,
+        documents_failed_after_fallback,
+        documents_sent_to_llamaparse_initial,
+    ) = process_directory(
         input_directory, out_folder
     )  # convert the files to md
     print("File processing for modified files completed.")
@@ -156,7 +164,15 @@ def process_modified_files(
     print("Processing special formats...")
     calendar_format(input_directory, metadata_csv)
 
-    return llama_parse_count, indexed_count, empty_files_count, documents_retried, documents_rescued_by_fallback, documents_failed_after_fallback
+    return (
+        llama_parse_count,
+        indexed_count,
+        empty_files_count,
+        documents_retried,
+        documents_rescued_by_fallback,
+        documents_failed_after_fallback,
+        documents_sent_to_llamaparse_initial,
+    )
 
 def is_directory_empty(directory_path):
     return not os.listdir(directory_path)

@@ -24,7 +24,7 @@ def parse_files_to_md(
     out_folder=OUT_PATH,
     metadata_csv="all_links.csv",
     excluded_domains_path=EXCLUDED_PATH,
-    last_output_data_path= os.path.join(DATA_PATH,"last_output_data.csv"),
+    last_output_data_path=os.path.join(DATA_PATH, "last_output_data.csv"),
 ):
     """
     Main function to process a directory containing HTML and PDF files and attach metadata, avoiding parsing files with unchanged content.
@@ -76,6 +76,12 @@ def analyze_file_changes(output_data_path, last_output_data_path, out_folder, la
 
     if not os.path.exists(last_output_data_path):
         print("Last output data file not found; processing all files.")
+        stats["files_processed"] = len(current_df)
+        stats["files_skipped_due_to_no_change"] = 0
+        stats["files_processed_outside_change_detection"] = len(current_df[current_df["Content Type"] == "pdf"])
+        with open(os.path.join(DATA_PATH, "processed_files.log"), "w") as f:
+            for _, row in current_df.iterrows():
+                f.write(f"{row["URL"]}\n")
         return current_df  # Process all files if no last output data
 
     last_df = pd.read_csv(last_output_data_path)

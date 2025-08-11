@@ -79,9 +79,7 @@ def main():
     # Ensure the key exists before parsing
     stats["files_processed_by_directory"] = 0
     parse_files_to_md(last_data_json=last_data_json, stats=stats, detailed_log_path=detailed_log_path)
-    stats["files_processed_outside_change_detection"] = (
-        stats["files_processed_by_directory"] - stats["files_skipped_due_to_no_change"]
-    )
+    # files_processed_outside_change_detection is set in parser.py as len(pdf_df)
 
     print("===>Updating crawl timestamp...\n")
     update_crawl_timestamp(detail_json_path, DATA_PATH)

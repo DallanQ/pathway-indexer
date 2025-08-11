@@ -146,3 +146,5 @@ def get_indexes():
     print(f"All links saved in {DATA_PATH}/all_links.csv")
     print("Process finished! Links ready to be crawled.")
     print()
+
+    return len(df_merged)

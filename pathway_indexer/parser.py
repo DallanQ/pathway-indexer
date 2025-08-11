@@ -111,7 +111,6 @@ def analyze_file_changes(output_data_path, last_output_data_path, out_folder, la
     # Combine changed HTML files with all PDF files for processing
     files_to_process = pd.concat([changed_html_files, pdf_df], ignore_index=True)
 
-    stats["files_processed"] = len(files_to_process)
     stats["files_skipped_due_to_no_change"] = len(unchanged_html_files)
     stats["files_processed_outside_change_detection"] = len(pdf_df)
 
@@ -125,6 +124,7 @@ def analyze_file_changes(output_data_path, last_output_data_path, out_folder, la
         for _, row in files_to_process.iterrows():
             f.write(f"{row["URL"]}\n")
 
+    stats["files_processed"] = len(files_to_process)
     return files_to_process
 
 

@@ -70,7 +70,7 @@ def main():
     last_data_json = initialize_json_file(detail_json_path, output_data_path)
 
     print("===>Getting indexes...\n")
-    get_indexes()
+    stats["total_documents_crawled"] = get_indexes()
 
     print("Crawler Started...\n")
     crawl_data(stats, detailed_log_path)

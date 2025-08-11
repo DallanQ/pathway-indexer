@@ -27,12 +27,12 @@ def get_indexes():
 
     # General Variables
     ACM_URL = "https://missionaries.prod.byu-pathway.psdops.com/ACC-site-index"
-    MISSIONARY_URL = "https://missionaries.prod.byu-pathway.psdops.com/missionary-services-site-index"
+    # MISSIONARY_URL = "https://missionaries.prod.byu-pathway.psdops.com/missionary-services-site-index" # Commented out for testing
     HELP_URL = "https://help.byupathway.edu/knowledgebase/"
     STUDENT_SERVICES_URL = "https://student-services.catalog.prod.coursedog.com/"
 
     acm_path = f"{DATA_PATH}/index/acm.csv"
-    missionary_path = f"{DATA_PATH}/index/missionary.csv"
+    # missionary_path = f"{DATA_PATH}/index/missionary.csv" # Commented out for testing
     help_path = f"{DATA_PATH}/index/help.csv"
     student_services_path = f"{DATA_PATH}/index/student_services.csv"
 
@@ -45,12 +45,12 @@ def get_indexes():
     )
 
     #! THERE WAS CHANGES IN THE MISSIONARY SELECTORS
-    missionary_selectors = Selectors(
-        header="h1",
-        sub_header="h2",
-        link="a",
-        text="a > span",
-    )
+    # missionary_selectors = Selectors( # Commented out for testing
+    #     header="h1",
+    #     sub_header="h2",
+    #     link="a",
+    #     text="a > span",
+    # )
 
     HELP_SELECTOR = "#articleList"
 
@@ -60,10 +60,11 @@ def get_indexes():
     print(f"Length of ACM data: {len(acm_data)}")
     print()
 
-    missionary_data = crawl_index(MISSIONARY_URL, missionary_selectors)
-    print("Missionary data collected!")
-    print(f"Length of missionary data: {len(missionary_data)}")
-    print()
+    # missionary_data = crawl_index(MISSIONARY_URL, missionary_selectors) # Commented out for testing
+    # print("Missionary data collected!") # Commented out for testing
+    # print(f"Length of missionary data: {len(missionary_data)}") # Commented out for testing
+    # print() # Commented out for testing
+    missionary_data = [] # Set to empty list for testing
 
     help_data = asyncio.run(get_help_links(HELP_URL, HELP_SELECTOR))
     print("Help data collected!")
@@ -82,12 +83,12 @@ def get_indexes():
         for row in acm_data:
             writer.writerow([*row, "ACM"])
 
-    with open(missionary_path, "w", newline="", encoding="UTF-8") as csvfile:
-        writer = csv.writer(csvfile)
-        # write headers
-        writer.writerow(["Section", "Subsection", "Title", "URL", "Role"])
-        for row in missionary_data[2:]:
-            writer.writerow([*row, "missionary"])
+    # with open(missionary_path, "w", newline="", encoding="UTF-8") as csvfile: # Commented out for testing
+    #     writer = csv.writer(csvfile) # Commented out for testing
+    #     # write headers
+    #     writer.writerow(["Section", "Subsection", "Title", "URL", "Role"]) # Commented out for testing
+    #     for row in missionary_data[2:]: # Commented out for testing
+    #         writer.writerow([*row, "missionary"])
 
     with open(help_path, "w", newline="", encoding="UTF-8") as csvfile:
         writer = csv.writer(csvfile)
@@ -114,11 +115,11 @@ def get_indexes():
 
     # Load the data into Dataframes
     df = pd.read_csv(f"{index_path}/acm.csv")
-    df2 = pd.read_csv(f"{index_path}/missionary.csv")
+    # df2 = pd.read_csv(f"{index_path}/missionary.csv") # Commented out for testing
     df3 = pd.read_csv(f"{index_path}/help.csv")
     df4 = pd.read_csv(f"{index_path}/student_services.csv")
 
-    df = pd.concat([df, df2, df3, df4], ignore_index=True)
+    df = pd.concat([df, df3, df4], ignore_index=True) # df2 removed for testing
 
     df.fillna("Missing", inplace=True)
 

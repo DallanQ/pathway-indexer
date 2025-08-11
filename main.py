@@ -12,6 +12,7 @@ from pathway_indexer.memory import (
     update_crawl_timestamp,
 )
 from pathway_indexer.parser import parse_files_to_md
+from utils.log_analyzer import analyze_logs
 
 
 def inspect_md_files(stats):
@@ -151,6 +152,8 @@ Total time taken for the pipeline run.
         f.write(metrics_explanation)
     # Print path relative to repo root, starting from DATA_PATH
     rel_path = os.path.relpath(metrics_explanation_path, start=os.getcwd())
+    analyze_logs()
+
     print(f"\nWhat do these numbers mean? See ./{rel_path}")
 
 

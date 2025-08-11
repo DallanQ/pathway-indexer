@@ -113,6 +113,7 @@ def analyze_file_changes(output_data_path, last_output_data_path, out_folder, la
 
     stats["files_processed"] = len(files_to_process)
     stats["files_skipped_due_to_no_change"] = len(unchanged_html_files)
+    stats["files_processed_outside_change_detection"] = len(pdf_df)
 
     # Log skipped files
     with open(os.path.join(DATA_PATH, "skipped_files.log"), "w") as f:

@@ -57,7 +57,6 @@ def get_indexes():
     # Crawling Process
     acm_data = crawl_index(ACM_URL, acm_selectors)
     print("ACM data collected!")
-    feature/acm-indexing-with-logging
     print(f"Length of ACM data: {len(acm_data)}")
     print()
 
@@ -101,6 +100,13 @@ def get_indexes():
         writer.writerow(["Section", "Subsection", "Title", "URL", "Role"])
         for row in student_services_data:
             writer.writerow([*row, "missionary"])
+
+    # Log the number of links found from each source
+    with open(os.path.join(DATA_PATH, "get_indexes.log"), "w") as f:
+        f.write(f"ACM links: {len(acm_data)}\n")
+        f.write(f"Missionary links: {len(missionary_data)}\n")
+        f.write(f"Help links: {len(help_data)}\n")
+        f.write(f"Student Services links: {len(student_services_data)}\n")
 
     # *****Create the final dataframe*****
 

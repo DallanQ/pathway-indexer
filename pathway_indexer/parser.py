@@ -33,9 +33,7 @@ def parse_files_to_md(
 
     # print(last_data_json["last_folder_crawl"])
 
-    files_to_process = analyze_file_changes(
-        output_data_path, last_output_data_path, out_folder, last_data_json, stats
-    )
+    files_to_process = analyze_file_changes(output_data_path, last_output_data_path, out_folder, last_data_json, stats)
     if not files_to_process.empty:
         empty_llamaparse_files_counted = set()
         process_modified_files(
@@ -53,9 +51,7 @@ def parse_files_to_md(
     print("All tasks completed successfully.")
 
 
-def analyze_file_changes(
-    output_data_path, last_output_data_path, out_folder, last_data_json, stats
-):
+def analyze_file_changes(output_data_path, last_output_data_path, out_folder, last_data_json, stats):
     """
     Analyze file changes by comparing current and last output data based on Content Hash,
     only for HTML files. PDF files are always included in files_to_process.
@@ -115,7 +111,18 @@ def analyze_file_changes(
     # Combine changed HTML files with all PDF files for processing
     files_to_process = pd.concat([changed_html_files, pdf_df], ignore_index=True)
 
-    stats["unique_files_processed"] = len(files_to_process)
+    stats["files_processed"] = len(files_to_process)
+    stats["files_skipped_due_to_no_change"] = len(unchanged_html_files)
+
+    # Log skipped files
+    with open(os.path.join(DATA_PATH, "skipped_files.log"), "w") as f:
+        for _, row in unchanged_html_files.iterrows():
+            f.write(f"{row["URL"]}\n")
+
+    # Log files to be processed
+    with open(os.path.join(DATA_PATH, "processed_files.log"), "w") as f:
+        for _, row in files_to_process.iterrows():
+            f.write(f"{row["URL"]}\n")
 
     return files_to_process
 
@@ -141,7 +148,7 @@ def process_modified_files(
     stats["files_processed_by_directory"] = process_directory(
         input_directory, out_folder, stats, empty_llamaparse_files_counted, detailed_log_path
     )  # convert the files to md
-  
+
     print("File processing for modified files completed.")
 
     add_titles_tag(input_directory, out_folder)

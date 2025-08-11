@@ -44,7 +44,8 @@ def main():
     start_time = time.time()
     stats = {
         "total_documents_crawled": 0,
-        "unique_files_processed": 0,
+        "files_skipped_due_to_no_change": 0,
+        "files_processed": 0,
         "documents_sent_to_llamaparse": 0,
         "documents_empty_from_llamaparse": 0,  # formerly rescued_by_fallback
         "documents_successful_after_retries": 0,  # formerly rescued_by_fallback
@@ -78,7 +79,7 @@ def main():
     stats["files_processed_by_directory"] = 0
     parse_files_to_md(last_data_json=last_data_json, stats=stats, detailed_log_path=detailed_log_path)
     stats["files_processed_outside_change_detection"] = (
-        stats["files_processed_by_directory"] - stats["unique_files_processed"]
+        stats["files_processed_by_directory"] - stats["files_skipped_due_to_no_change"]
     )
 
     print("===>Updating crawl timestamp...\n")
@@ -112,8 +113,11 @@ Pipeline Metrics
 => total_documents_crawled: {stats.get("total_documents_crawled", "N/A")}
 Number of URLs found and listed for crawling.
 
-=> unique_files_processed: {stats.get("unique_files_processed", "N/A")}
-Number of files determined as changed and needing processing (if zero, change detection found none; all files processed outside change detection).
+=> files_skipped_due_to_no_change: {stats.get("files_skipped_due_to_no_change", "N/A")}
+Number of files that were not changed and therefore not processed again.
+
+=> files_processed: {stats.get("files_processed", "N/A")}
+Number of files that were processed (either new or changed).
 
 => documents_sent_to_llamaparse: {stats.get("documents_sent_to_llamaparse", "N/A")}
 Number of files sent to LlamaParse for conversion to markdown.

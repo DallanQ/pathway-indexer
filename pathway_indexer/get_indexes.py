@@ -64,7 +64,7 @@ def get_indexes():
     # print("Missionary data collected!") # Commented out for testing
     # print(f"Length of missionary data: {len(missionary_data)}") # Commented out for testing
     # print() # Commented out for testing
-    missionary_data = [] # Set to empty list for testing
+    missionary_data = []  # Set to empty list for testing
 
     help_data = asyncio.run(get_help_links(HELP_URL, HELP_SELECTOR))
     print("Help data collected!")
@@ -102,13 +102,6 @@ def get_indexes():
         for row in student_services_data:
             writer.writerow([*row, "missionary"])
 
-    # Log the number of links found from each source
-    with open(os.path.join(DATA_PATH, "get_indexes.log"), "w") as f:
-        f.write(f"ACM links: {len(acm_data)}\n")
-        f.write(f"Missionary links: {len(missionary_data)}\n")
-        f.write(f"Help links: {len(help_data)}\n")
-        f.write(f"Student Services links: {len(student_services_data)}\n")
-
     # *****Create the final dataframe*****
 
     index_path = os.path.join(DATA_PATH, "index")
@@ -119,7 +112,7 @@ def get_indexes():
     df3 = pd.read_csv(f"{index_path}/help.csv")
     df4 = pd.read_csv(f"{index_path}/student_services.csv")
 
-    df = pd.concat([df, df3, df4], ignore_index=True) # df2 removed for testing
+    df = pd.concat([df, df3, df4], ignore_index=True)  # df2 removed for testing
 
     df.fillna("Missing", inplace=True)
 

@@ -230,11 +230,24 @@ def main():
         print(f"   - Total nodes processed: {len(nodes)}")
         print(f"   - Vector store ready for queries")
 
+        # Build node_counts_per_file from all markdown files, defaulting to 0
+        all_md_files = set()
+        datapath = os.getenv("DATA_PATH")
+        for subdir in ["out/from_html/", "out/from_pdf/"]:
+            dir_path = os.path.join(datapath, subdir)
+            if os.path.exists(dir_path):
+                for fname in os.listdir(dir_path):
+                    if fname.endswith(".md"):
+                        all_md_files.add(os.path.join(dir_path, fname))
+
+        # Count nodes for each file
+        for md_file in all_md_files:
+            stats["node_counts_per_file"].setdefault(md_file, 0)
+
         for node in nodes:
             filepath = node.metadata.get("filepath")
-            if filepath not in stats["node_counts_per_file"]:
-                stats["node_counts_per_file"][filepath] = 0
-            stats["node_counts_per_file"][filepath] += 1
+            if filepath in stats["node_counts_per_file"]:
+                stats["node_counts_per_file"][filepath] += 1
 
         for _filepath, count in stats["node_counts_per_file"].items():
             if count == 0:

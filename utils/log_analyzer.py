@@ -24,13 +24,41 @@ def analyze_logs():
     missionary_links = 0
     help_links = 0
     student_services_links = 0
+    
+    # Check if the CSV exists first
     if os.path.exists(all_links_csv):
         df = pd.read_csv(all_links_csv)
-        if "Role" in df.columns:
-            acm_links = (df["Role"] == "ACM").sum()
-            missionary_links = (df["Role"] == "missionary").sum()
-            help_links = (df["Role"] == "help").sum()
-            student_services_links = (df["Role"] == "student_services").sum()
+        
+        # Read from individual index CSV files if they exist
+        index_path = os.path.join(DATA_PATH, "index")
+        acm_path = os.path.join(index_path, "acm.csv")
+        missionary_path = os.path.join(index_path, "missionary.csv") 
+        help_path = os.path.join(index_path, "help.csv")
+        student_services_path = os.path.join(index_path, "student_services.csv")
+        
+        # Get counts from individual index files if they exist, otherwise count by URL pattern
+        if os.path.exists(acm_path) and os.path.exists(missionary_path) and os.path.exists(help_path) and os.path.exists(student_services_path):
+            acm_df = pd.read_csv(acm_path)
+            missionary_df = pd.read_csv(missionary_path)
+            help_df = pd.read_csv(help_path)
+            student_services_df = pd.read_csv(student_services_path)
+            
+            acm_links = len(acm_df)
+            missionary_links = len(missionary_df)
+            help_links = len(help_df)
+            student_services_links = len(student_services_df)
+        else:
+            # Fallback to URL pattern matching if individual files don't exist
+            for _, row in df.iterrows():
+                url = str(row["URL"]).lower() if not pd.isna(row["URL"]) else ""
+                if "help.byupathway.edu" in url:
+                    help_links += 1
+                elif "student-services.catalog" in url:
+                    student_services_links += 1
+                elif "acc-site-index" in url:
+                    acm_links += 1
+                else:
+                    missionary_links += 1
     # Prepare index summary string listing all links (professional format)
     index_summary = f"""
 ========================================================
@@ -134,8 +162,6 @@ Student Services Links: {student_services_links}
     # Write combined output to metrics_explanation.log (overwrite for clarity)
     with open(metrics_explanation_path, "w") as f:
         f.write(index_summary)
-        f.write("\n========================================================\n                LOG ANALYZER\n========================================================\n")
-        f.write("".join(output_lines))
 
 
 if __name__ == "__main__":

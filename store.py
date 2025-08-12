@@ -266,35 +266,42 @@ def main():
         with open(node_counts_log_path, "w") as f:
             json.dump(stats["node_counts_per_file"], f, indent=4)
 
+        # Collect zero-node files and their URLs
+        zero_node_files = []
+        for _filepath, count in stats["node_counts_per_file"].items():
+            if count == 0:
+                zero_node_files.append(_filepath)
+
         # Append indexer metrics explanation to metrics_explanation.log
         metrics_explanation_path = os.path.join(os.getenv("DATA_PATH"), "metrics_explanation.log")
         indexer_explanation = f"""
 Indexer Metrics
 
-=> Actual Files with indexable content: {len(stats["node_counts_per_file"])}
-Number of markdown files loaded for indexing. Only {len(stats["node_counts_per_file"])} files had indexable content and were included in the final indexer metrics.
+=> Actual Files with indexable content: {len(stats['node_counts_per_file'])}
+Number of markdown files loaded for indexing. Only {len(stats['node_counts_per_file'])} files had indexable content and were included in the final indexer metrics.
 
-=> Total nodes processed: {sum(stats["node_counts_per_file"].values())}
+=> Total nodes processed: {sum(stats['node_counts_per_file'].values())}
 Number of nodes (chunks of content) created and indexed from the markdown files.
 
-=> Average nodes per file: {stats["average_nodes_per_file"]}
+=> Average nodes per file: {stats['average_nodes_per_file']}
 Average number of nodes per indexed file.
 
-=> Files with zero nodes: {stats["files_with_zero_nodes"]}
+=> Files with zero nodes: {len(zero_node_files)}
 Number of files that had no indexable content.
-
-=> Files with one node: {stats["files_with_one_node"]}
-Number of files that produced only one node.
-
-=> Files with more than one node: {stats["files_with_more_than_one_node"]}
-Number of files that produced more than one node.
-
-=> Node counts per file saved to: node_counts_log.json
-Node counts per file are logged for analysis.
-
-=> execution_time: {stats["execution_time"]}
-Time taken for the indexing process.
 """
+        # Add section for files with zero nodes (no indexable content)
+        indexer_explanation += "\nFiles without indexable content (zero nodes):\n"
+        indexer_explanation += f"Total: {len(zero_node_files)}\n"
+        for filepath in zero_node_files:
+            url = None
+            for doc in documents:
+                if doc.metadata.get("filepath") == filepath:
+                    url = doc.metadata.get("url")
+                    break
+            indexer_explanation += f"    - Filepath: {filepath}, URL: {url}\n"
+        indexer_explanation += "\n"
+        # Continue with rest of metrics
+        indexer_explanation += f"=> Files with one node: {stats['files_with_one_node']}\nNumber of files that produced only one node.\n\n=> Files with more than one node: {stats['files_with_more_than_one_node']}\nNumber of files that produced more than one node.\n\n=> Node counts per file saved to: node_counts_log.json\nNode counts per file are logged for analysis.\n\n=> execution_time: {stats['execution_time']}\nTime taken for the indexing process.\n"
         with open(metrics_explanation_path, "a") as f:
             f.write(indexer_explanation)
         # Print path relative to repo root, starting from DATA_PATH

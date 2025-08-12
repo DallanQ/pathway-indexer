@@ -1,7 +1,9 @@
 import json
 import os
-import pandas as pd
 from collections import defaultdict
+
+import pandas as pd
+
 
 def analyze_logs():
     """
@@ -26,20 +28,21 @@ def analyze_logs():
     log_urls = []
     parse_filepaths = set()
 
-    with open(detailed_log_path, "r") as f:
+    with open(detailed_log_path) as f:
         for line in f:
             try:
                 log_entry = json.loads(line)
-                stage = log_entry.get('stage')
-                status = log_entry.get('status')
+                stage = log_entry.get("stage")
+                status = log_entry.get("status")
 
-                if stage == 'crawl':
+                if stage == "crawl":
                     crawl_counts[status] += 1
                     log_urls.append(log_entry.get("url"))
-                elif stage == 'parse' or stage == 'parse_txt_to_md':
+                elif stage == "parse" or stage == "parse_txt_to_md":
                     parse_counts[status] += 1
-                    if log_entry.get('filepath'):
-                        parse_filepaths.add(log_entry.get('filepath'))
+                    if status in ["HTML_PROCESSING_ATTEMPT", "PDF_PROCESSING_ATTEMPT"]:
+                        if log_entry.get("filepath"):
+                            parse_filepaths.add(log_entry.get("filepath"))
 
                 if log_entry.get("status") == "FAILED_HTTP_ERROR":
                     failed_http_errors.append(log_entry)
@@ -77,18 +80,23 @@ def analyze_logs():
     if failed_http_errors:
         print(f"\nFAILED_HTTP_ERROR: {len(failed_http_errors)}")
         for error in failed_http_errors:
-            filepath = error.get('filepath') if error.get('filepath') is not None else 'N/A'
+            filepath = error.get("filepath") if error.get("filepath") is not None else "N/A"
             print(f"    - URL: {error.get('url')}, Filepath: {filepath}")
-        print("\nmessage: \"Failed to download content due to HTTP errors.\"")
-        print("*The pipeline encountered HTTP errors when trying to download the content from the URLs listed above. This could be due to various reasons, such as the URL being invalid, the server being unavailable, or a lack of permissions to access the content.*")
+        print('\nmessage: "Failed to download content due to HTTP errors."')
+        print(
+            "*The pipeline encountered HTTP errors when trying to download the content from the URLs listed above. This could be due to various reasons, such as the URL being invalid, the server being unavailable, or a lack of permissions to access the content.*"
+        )
 
     if direct_loads:
         print(f"\nDIRECT_LOAD: {len(direct_loads)}")
         for load in direct_loads:
-            filepath = load.get('filepath') if load.get('filepath') is not None else 'N/A'
+            filepath = load.get("filepath") if load.get("filepath") is not None else "N/A"
             print(f"    - Filepath: {filepath}, URL: {load.get('url')}")
-        print("\nmessage: \"Loaded TXT file directly without LlamaParse.\"")
-        print("*The pipeline detected that the following file[s] was a plain text file and did not require markdown conversion via LlamaParse. Instead, it was read and processed as-is. So these TXT files are handled by direct loading, bypassing LlamaParse, since they are already in a simple text format suitable for further processing.*")
+        print('\nmessage: "Loaded TXT file directly without LlamaParse."')
+        print(
+            "*The pipeline detected that the following file[s] was a plain text file and did not require markdown conversion via LlamaParse. Instead, it was read and processed as-is. So these TXT files are handled by direct loading, bypassing LlamaParse, since they are already in a simple text format suitable for further processing.*"
+        )
+
 
 if __name__ == "__main__":
     analyze_logs()

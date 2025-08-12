@@ -230,18 +230,18 @@ def main():
         print(f"   - Total nodes processed: {len(nodes)}")
         print(f"   - Vector store ready for queries")
 
-        # Build node_counts_per_file from all markdown files, defaulting to 0
-        all_md_files = set()
+        # Track all markdown files loaded for indexing (all .md files in output dirs)
+        md_files_loaded_for_indexing = set()
         datapath = os.getenv("DATA_PATH")
         for subdir in ["out/from_html/", "out/from_pdf/"]:
             dir_path = os.path.join(datapath, subdir)
             if os.path.exists(dir_path):
                 for fname in os.listdir(dir_path):
                     if fname.endswith(".md"):
-                        all_md_files.add(os.path.join(dir_path, fname))
+                        md_files_loaded_for_indexing.add(os.path.join(dir_path, fname))
 
         # Count nodes for each file
-        for md_file in all_md_files:
+        for md_file in md_files_loaded_for_indexing:
             stats["node_counts_per_file"].setdefault(md_file, 0)
 
         for node in nodes:
@@ -257,6 +257,7 @@ def main():
             else:
                 stats["files_with_more_than_one_node"] += 1
 
+        stats["md_files_loaded_for_indexing"] = len(md_files_loaded_for_indexing)
         end_time = time.time()
         execution_seconds = end_time - start_time
         hours, rem = divmod(execution_seconds, 3600)
@@ -290,8 +291,11 @@ def main():
         indexer_explanation = f"""
 Indexer Metrics
 
-=> Actual Files with indexable content: {len(stats['node_counts_per_file'])}
-Number of markdown files loaded for indexing. Only {len(stats['node_counts_per_file'])} files had indexable content and were included in the final indexer metrics.
+=> Markdown files loaded for indexing: {stats['md_files_loaded_for_indexing']}
+Number of markdown files present and loaded for indexing. This includes all .md files found in the output directories, regardless of node count.
+
+=> Files with indexable content: {len([fp for fp, count in stats['node_counts_per_file'].items() if count > 0])}
+Number of markdown files that produced at least one node (indexable content) and were included in the final indexer metrics.
 
 => Total nodes processed: {sum(stats['node_counts_per_file'].values())}
 Number of nodes (chunks of content) created and indexed from the markdown files.
@@ -313,16 +317,20 @@ Number of files that had no indexable content.
                     break
             indexer_explanation += f"    - Filepath: {filepath}, URL: {url}\n"
         indexer_explanation += "\n"
+        
         # Continue with rest of metrics
         indexer_explanation += f"=> Files with one node: {stats['files_with_one_node']}\nNumber of files that produced only one node.\n\n=> Files with more than one node: {stats['files_with_more_than_one_node']}\nNumber of files that produced more than one node.\n\n=> Node counts per file saved to: node_counts_log.json\nNode counts per file are logged for analysis.\n\n=> execution_time: {stats['execution_time']}\nTime taken for the indexing process.\n"
+        
         with open(metrics_explanation_path, "a") as f:
             f.write(indexer_explanation)
+            
         # Print path relative to repo root, starting from DATA_PATH
         rel_path = os.path.relpath(metrics_explanation_path, start=os.getcwd())
         print(f"\nWhat do these numbers mean? See ./{rel_path}")
+        
         # Delete node_counts_per_file after metrics explanation
         del stats["node_counts_per_file"]
-
+        
         return index, retriever, nodes
         
     except Exception as e:

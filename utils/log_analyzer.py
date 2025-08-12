@@ -32,7 +32,7 @@ def analyze_logs():
             help_links = (df["Role"] == "help").sum()
             student_services_links = (df["Role"] == "student_services").sum()
     # Prepare index summary string listing all links (professional format)
-    index_summary = """
+    index_summary = f"""
 ========================================================
                 INDEX COUNTS SUMMARY
 ========================================================
@@ -99,18 +99,19 @@ Student Services Links: {student_services_links}
             for url in missing_urls:
                 output_lines.append(f"    • {url}\n")
 
-        output_lines.append("\nCrawl Stage Results:\n")
+        output_lines.append("\n--------------------------------------------------------\n                CRAWL STAGE RESULTS\n--------------------------------------------------------\n")
         output_lines.append(f"Total files processed:                 {sum(crawl_counts.values())}\n")
         for status, count in crawl_counts.items():
             output_lines.append(f"{status:30}: {count}\n")
 
-        output_lines.append("\nParse Stage Results:\n")
+        output_lines.append("\n--------------------------------------------------------\n                PARSE STAGE RESULTS\n--------------------------------------------------------\n")
         output_lines.append(f"Total unique files processed:           {len(parse_filepaths)}\n")
         for status, count in parse_counts.items():
             output_lines.append(f"{status:30}: {count}\n")
 
         if failed_http_errors:
-            output_lines.append(f"\nFAILED_HTTP_ERROR ({len(failed_http_errors)}):\n")
+            output_lines.append(f"\n--------------------------------------------------------\n                HTTP ERRORS\n--------------------------------------------------------\n")
+            output_lines.append(f"FAILED_HTTP_ERROR ({len(failed_http_errors)}):\n")
             for error in failed_http_errors:
                 filepath = error.get("filepath") if error.get("filepath") is not None else "N/A"
                 output_lines.append(f"    • URL: {error.get('url')}\n      Filepath: {filepath}\n")
@@ -120,7 +121,8 @@ Student Services Links: {student_services_links}
             )
 
         if direct_loads:
-            output_lines.append(f"\nDIRECT_LOAD ({len(direct_loads)}):\n")
+            output_lines.append(f"\n--------------------------------------------------------\n                DIRECT LOADS\n--------------------------------------------------------\n")
+            output_lines.append(f"DIRECT_LOAD ({len(direct_loads)}):\n")
             for load in direct_loads:
                 filepath = load.get("filepath") if load.get("filepath") is not None else "N/A"
                 output_lines.append(f"    • {filepath}\n      URL: {load.get('url')}\n")

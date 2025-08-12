@@ -18,12 +18,23 @@ def analyze_logs():
     # Prepare metrics_explanation.log path
     metrics_explanation_path = os.path.join(DATA_PATH, "metrics_explanation.log")
 
-    # Read get_indexes.log
-    get_indexes_path = os.path.join(DATA_PATH, "get_indexes.log")
-    get_indexes_content = ""
-    if os.path.exists(get_indexes_path):
-        with open(get_indexes_path) as f:
-            get_indexes_content = f.read()
+    # Directly read ACM, Missionary, Help, and Student Services link counts from all_links.csv
+    all_links_csv = os.path.join(DATA_PATH, "all_links.csv")
+    index_counts = {}
+    if os.path.exists(all_links_csv):
+        df = pd.read_csv(all_links_csv)
+        # Count by Role
+        if "Role" in df.columns:
+            index_counts = df["Role"].value_counts().to_dict()
+        else:
+            index_counts = {}
+    # Prepare index summary string
+    index_summary = "\n--- Index Counts ---\n"
+    if index_counts:
+        for role, count in index_counts.items():
+            index_summary += f"{role} links: {count}\n"
+    else:
+        index_summary += "No index counts available.\n"
 
     # Collect log analyzer output into a string
     output_lines = []
@@ -96,9 +107,9 @@ def analyze_logs():
             for error in failed_http_errors:
                 filepath = error.get("filepath") if error.get("filepath") is not None else "N/A"
                 output_lines.append(f"    - URL: {error.get('url')}, Filepath: {filepath}\n")
-            output_lines.append('\nmessage: "Failed to download content due to HTTP errors."\n')
+            output_lines.append('\n       message: "Failed to download content due to HTTP errors."\n')
             output_lines.append(
-                "*The pipeline encountered HTTP errors when trying to download the content from the URLs listed above. This could be due to various reasons, such as the URL being invalid, the server being unavailable, or a lack of permissions to access the content.*\n"
+                "       *The pipeline encountered HTTP errors when trying to download the content from the URLs listed above. This could be due to various reasons, such as the URL being invalid, the server being unavailable, or a lack of permissions to access the content.*\n"
             )
 
         if direct_loads:
@@ -106,16 +117,14 @@ def analyze_logs():
             for load in direct_loads:
                 filepath = load.get("filepath") if load.get("filepath") is not None else "N/A"
                 output_lines.append(f"    - Filepath: {filepath}, URL: {load.get('url')}\n")
-            output_lines.append('\nmessage: "Loaded TXT file directly without LlamaParse."\n')
+            output_lines.append('\n       message: "Loaded TXT file directly without LlamaParse."\n')
             output_lines.append(
-                "*The pipeline detected that the following file[s] was a plain text file and did not require markdown conversion via LlamaParse. Instead, it was read and processed as-is. So these TXT files are handled by direct loading, bypassing LlamaParse, since they are already in a simple text format suitable for further processing.*\n"
+                "*       The pipeline detected that the following file[s] was a plain text file and did not require markdown conversion via LlamaParse. Instead, it was \n       read and processed as-is. So these TXT files are handled by direct loading, bypassing LlamaParse, since they are already in a simple text format suitable for further processing.*\n"
             )
 
     # Write combined output to metrics_explanation.log
     with open(metrics_explanation_path, "a") as f:
-        if get_indexes_content:
-            f.write("\n--- get_indexes.log ---\n")
-            f.write(get_indexes_content)
+        f.write(index_summary)
         f.write("\n--- log_analyzer ---\n")
         f.write("".join(output_lines))
 

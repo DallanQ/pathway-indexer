@@ -325,7 +325,7 @@ def has_markdown_tables(content):
     return all(re.search(pattern, content, re.MULTILINE) for pattern in table_patterns)
 
 
-def parse_txt_to_md(file_path, file_extension, stats, empty_llamaparse_files_counted, detailed_log_path, title_tag=""): 
+def parse_txt_to_md(file_path, file_extension, stats, empty_llamaparse_files_counted, detailed_log_path, title_tag="", url=None): 
     """
     Parses a .txt file to a Markdown (.md) file using LlamaParse, with detailed logging.
     """
@@ -562,7 +562,7 @@ def attach_metadata_to_markdown_directories(markdown_dirs, metadata_dict):
                 print(f"No metadata found for {file_path}. Skipping.")
 
 
-def process_file(file_path, out_folder, stats, empty_llamaparse_files_counted, detailed_log_path):
+def process_file(file_path, out_folder, stats, empty_llamaparse_files_counted, detailed_log_path, url=None):
     """
     Processes a file based on its extension: PDF or HTML.
     """
@@ -739,6 +739,17 @@ def process_directory(origin_path, out_folder, stats, empty_llamaparse_files_cou
     """
     Processes all HTML and PDF files in the specified directory.
     """
+    import csv
+    # Load all_links.csv for URL lookup
+    all_links_path = os.path.join(os.path.dirname(origin_path), "all_links.csv")
+    file_url_map = {}
+    if os.path.exists(all_links_path):
+        with open(all_links_path, newline="", encoding="utf-8") as file:
+            reader = csv.DictReader(file)
+            for row in reader:
+                filename_with_ext = os.path.basename(row["filename"])
+                filename_without_ext = os.path.splitext(filename_with_ext)[0]
+                file_url_map[filename_without_ext] = row.get("URL")
     files_processed_by_directory = 0
     for root, _dirs, files in os.walk(origin_path):
         if "error" in root:
@@ -746,8 +757,10 @@ def process_directory(origin_path, out_folder, stats, empty_llamaparse_files_cou
         for file in files:
             if file.lower().endswith((".html", ".pdf")):
                 file_path = os.path.join(root, file)
-                print(f"Processing file: {file_path}")
-                process_file(file_path, out_folder, stats, empty_llamaparse_files_counted, detailed_log_path)
+                filename_without_ext = os.path.splitext(os.path.basename(file_path))[0]
+                url = file_url_map.get(filename_without_ext)
+                print(f"Processing file: {file_path} (URL: {url})")
+                process_file(file_path, out_folder, stats, empty_llamaparse_files_counted, detailed_log_path, url=url)
                 files_processed_by_directory += 1
     return files_processed_by_directory
 

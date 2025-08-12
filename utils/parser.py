@@ -368,6 +368,7 @@ def parse_txt_to_md(file_path, file_extension, stats, empty_llamaparse_files_cou
             "filepath": file_path,
             "status": "DIRECT_LOAD",
             "message": "Loaded TXT file directly without LlamaParse.",
+            "url": url  # Include the URL in the log entry
         }
         if detailed_log_path:
             with open(detailed_log_path, "a") as f:
@@ -688,7 +689,7 @@ def process_file(file_path, out_folder, stats, empty_llamaparse_files_counted, d
         # try a maximum of 3 times to parse the txt file to md
         for i in range(3):
             is_empty = parse_txt_to_md(
-                txt_file_path, file_extension, stats, empty_llamaparse_files_counted, detailed_log_path, title_tag
+                txt_file_path, file_extension, stats, empty_llamaparse_files_counted, detailed_log_path, title_tag, url
             )
             if not is_empty:
                 # remove the txt file

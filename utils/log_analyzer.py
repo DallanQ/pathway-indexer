@@ -20,21 +20,23 @@ def analyze_logs():
 
     # Directly read ACM, Missionary, Help, and Student Services link counts from all_links.csv
     all_links_csv = os.path.join(DATA_PATH, "all_links.csv")
-    index_counts = {}
+    acm_links = 0
+    missionary_links = 0
+    help_links = 0
+    student_services_links = 0
     if os.path.exists(all_links_csv):
         df = pd.read_csv(all_links_csv)
-        # Count by Role
         if "Role" in df.columns:
-            index_counts = df["Role"].value_counts().to_dict()
-        else:
-            index_counts = {}
-    # Prepare index summary string
+            acm_links = (df["Role"] == "ACM").sum()
+            missionary_links = (df["Role"] == "missionary").sum()
+            help_links = (df["Role"] == "help").sum()
+            student_services_links = (df["Role"] == "student_services").sum()
+    # Prepare index summary string in the previous format
     index_summary = "\n--- Index Counts ---\n"
-    if index_counts:
-        for role, count in index_counts.items():
-            index_summary += f"{role} links: {count}\n"
-    else:
-        index_summary += "No index counts available.\n"
+    index_summary += f"ACM links: {acm_links}\n"
+    index_summary += f"Missionary links: {missionary_links}\n"
+    index_summary += f"Help links: {help_links}\n"
+    index_summary += f"Student Services links: {student_services_links}\n"
 
     # Collect log analyzer output into a string
     output_lines = []
@@ -109,7 +111,7 @@ def analyze_logs():
                 output_lines.append(f"    - URL: {error.get('url')}, Filepath: {filepath}\n")
             output_lines.append('\n       message: "Failed to download content due to HTTP errors."\n')
             output_lines.append(
-                "       *The pipeline encountered HTTP errors when trying to download the content from the URLs listed above. This could be due to various reasons, such as the URL being invalid, the server being unavailable, or a lack of permissions to access the content.*\n"
+                "       *The pipeline encountered HTTP errors when trying to download the content from the URLs listed above. This could be due to various reasons, such as \n       the URL being invalid, the server being unavailable, or a lack of permissions to access the content.*\n"
             )
 
         if direct_loads:
@@ -119,7 +121,7 @@ def analyze_logs():
                 output_lines.append(f"    - Filepath: {filepath}, URL: {load.get('url')}\n")
             output_lines.append('\n       message: "Loaded TXT file directly without LlamaParse."\n')
             output_lines.append(
-                "*       The pipeline detected that the following file[s] was a plain text file and did not require markdown conversion via LlamaParse. Instead, it was \n       read and processed as-is. So these TXT files are handled by direct loading, bypassing LlamaParse, since they are already in a simple text format suitable for further processing.*\n"
+                "       *The pipeline detected that the following file[s] was a plain text file and did not require markdown conversion via LlamaParse. Instead, it was \n       read and processed as-is. So these TXT files are handled by direct loading, bypassing LlamaParse, since they are already in a simple text format \n       suitable for further processing.*\n"
             )
 
     # Write combined output to metrics_explanation.log

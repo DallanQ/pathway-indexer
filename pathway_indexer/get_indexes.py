@@ -53,7 +53,7 @@ def get_indexes():
         text="a > span",
     )
 
-    HELP_SELECTOR = "#articleList"
+    HELP_SELECTOR = "#desktopArticles"
 
     # # Crawling Process
     acm_data = crawl_index(ACM_URL, acm_selectors)

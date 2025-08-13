@@ -49,7 +49,7 @@ def clean_markdown(text):
     # Remove inline code backticks (`text`)
     text = re.sub(r"`+", "", text)
 
-    text = re.sub(r"[Print](javascript:window.print())", "", text)
+    text = re.sub(r"\[Print\]\(javascript:window\\.print\(\)\)", "", text)
 
     # Remove list of links with same anchors
     text = re.sub(r"(?:(https?:\/\/[^\s]+)\s+){2,}", "", text)  # Remove repeated links
@@ -63,22 +63,22 @@ def clean_markdown(text):
     # Regular expression to remove unnecessary text from
     # knowledge base articles
     # Remove specific table headers
-    text = re.sub(r"| **Bot Information** |\n| --- |", "", text)
-    text = re.sub(r"| **Information** |\n| --- |", "", text)
-    text = re.sub(r"Views:\n\n|\s*Article Overview\s*|\s*\n|\s*---\s*|\s*\n|.*?|", "", text, flags=re.DOTALL)
-    text = re.sub(r"|\s*Information\s*|\s*\n|\s*---\s*|\s*\n|.*?|", "", text, flags=re.DOTALL)
-    text = re.sub(r"|\s*Bot Information\s*|\s*\n|\s*---\s*|\s*\n|.*?|", "", text, flags=re.DOTALL)
+    text = re.sub(r"\| \*\*Bot Information\*\* \|\n\| --- \|", "", text)
+    text = re.sub(r"\| \*\*Information\*\* \|\n\| --- \|", "", text)
+    text = re.sub(r"Views:\n\n\|\s*Article Overview\s*\|\s*\n\|\s*---\s*\|\s*\n\|.*?\|", "", text, flags=re.DOTALL)
+    text = re.sub(r"\|\s*Information\s*\|\s*\n\|\s*---\s*\|\s*\n\|.*?\|", "", text, flags=re.DOTALL)
+    text = re.sub(r"\|\s*Bot Information\s*\|\s*\n\|\s*---\s*\|\s*\n\|.*?\|", "", text, flags=re.DOTALL)
     text = re.sub(r"\n\s*\*\*Information\*\*\s*\n", "\n", text)
-    text = re.sub(r"##? Views:\n\n| **Article Overview** |\n| --- |\n|.*?|", "", text, flags=re.DOTALL)
-    text = re.sub(r"Views:\n\n| **Article Overview** |\n| --- |\n|.*?|", "", text, flags=re.DOTALL)
-    text = re.sub(r"^| Information |\n", "", text, flags=re.MULTILINE)
+    text = re.sub(r"##? Views:\n\n\| \*\*Article Overview\*\* \|\n\| --- \|\n\|.*?\|", "", text, flags=re.DOTALL)
+    text = re.sub(r"Views:\n\n\| \*\*Article Overview\*\* \|\n\| --- \|\n\|.*?\|", "", text, flags=re.DOTALL)
+    text = re.sub(r"^\| Information \|\n", "", text, flags=re.MULTILINE)
     text = re.sub(r"\*\s*(Home|Knowledge Base - Home|KA-\d+)\s*\n", "", text)
     text = re.sub(
-        r"(You’re offline.*?Knowledge Articles|Contoso, Ltd.|BYU-Pathway Worldwide|Toggle navigation[.\w\s\*\+\-\: ]+|Search Filter|Search\n|Knowledge Article Key:)",
+        r"(You’re offline.*?Knowledge Articles|Contoso, Ltd\\.|BYU-Pathway Worldwide|Toggle navigation[.\w\s\*\+\-\\:]+|Search Filter|Search\n|Knowledge Article Key:)",
         "",
         text,
     )
-    text = re.sub(r"You’re offline. This is a read only version of the page.", "", text)
+    text = re.sub(r"You’re offline\\. This is a read only version of the page\\.", "", text)
 
     # Others regular expressions to remove unnecessary text
     # Remove empty headers
@@ -91,7 +91,7 @@ def clean_markdown(text):
     # text = re.sub(r"(Skip to content|Menu|[*+-].*)\n", '', text, flags=re.MULTILINE)
 
     # Remove broken links
-    text = re.sub(r"\[([^\]]+)\]\.\n\n\((http[^)]+)\) \(([^)]+)\)\.", r"\1 (\3).", text)
+    text = re.sub(r"\[([^\]]+)\]\\.\n\n\((http[^)]+)\) \(([^)]+)\)\\.", r"\1 (\3).", text)
 
     # Remove consecutive blank lines
     text = re.sub(r"\n\s*\n\s*\n", "\n\n", text)
@@ -509,7 +509,7 @@ def remove_existing_yaml_frontmatter(content):
     Removes existing YAML front matter from the given content.
     Assumes that front matter is enclosed between '---' markers.
     """
-    yaml_pattern = re.compile(r"^---[\s\S]*?---\s", re.MULTILINE)
+    yaml_pattern = re.compile(r"^---\s[\s\S]*?---\s", re.MULTILINE)
     return re.sub(yaml_pattern, "", content, count=1)
 
 

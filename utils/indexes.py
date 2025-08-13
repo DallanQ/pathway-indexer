@@ -166,7 +166,7 @@ async def get_help_links(url, selector):
 
         time.sleep(2)
         # Get the element with the specified selector
-        desktop_articles = await page.query_selector("#desktopArticles")
+        desktop_articles = await page.query_selector(selector)
 
         if not desktop_articles:
             raise ValueError(f"No element found for selector: {selector}")
@@ -182,7 +182,7 @@ async def get_help_links(url, selector):
             try:
                 print("Doing Click...")
                 await page.click(
-                    "#desktopArticles button.show-more-button", timeout=3000
+                    f"{selector} button.show-more-button", timeout=3000
                 )
                 time.sleep(2)
                 # si no aumentó el número de artículos, salir del loop

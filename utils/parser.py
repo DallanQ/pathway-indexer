@@ -49,7 +49,7 @@ def clean_markdown(text):
     # Remove inline code backticks (`text`)
     text = re.sub(r"`+", "", text)
 
-    text = re.sub(r"\[Print\]\(javascript:window\.print\(\)\)", "", text)
+    text = re.sub(r"[Print](javascript:window.print())", "", text)
 
     # Remove list of links with same anchors
     text = re.sub(r"(?:(https?:\/\/[^\s]+)\s+){2,}", "", text)  # Remove repeated links
@@ -63,22 +63,22 @@ def clean_markdown(text):
     # Regular expression to remove unnecessary text from
     # knowledge base articles
     # Remove specific table headers
-    text = re.sub(r"\| \*\*Bot Information\*\* \|\n\| --- \|", "", text)
-    text = re.sub(r"\| \*\*Information\*\* \|\n\| --- \|", "", text)
-    text = re.sub(r"Views:\n\n\|\s*Article Overview\s*\|\s*\n\|\s*---\s*\|\s*\n\|.*?\|", "", text, flags=re.DOTALL)
-    text = re.sub(r"\|\s*Information\s*\|\s*\n\|\s*---\s*\|\s*\n\|.*?\|", "", text, flags=re.DOTALL)
-    text = re.sub(r"\|\s*Bot Information\s*\|\s*\n\|\s*---\s*\|\s*\n\|.*?\|", "", text, flags=re.DOTALL)
+    text = re.sub(r"| **Bot Information** |\n| --- |", "", text)
+    text = re.sub(r"| **Information** |\n| --- |", "", text)
+    text = re.sub(r"Views:\n\n|\s*Article Overview\s*|\s*\n|\s*---\s*|\s*\n|.*?|", "", text, flags=re.DOTALL)
+    text = re.sub(r"|\s*Information\s*|\s*\n|\s*---\s*|\s*\n|.*?|", "", text, flags=re.DOTALL)
+    text = re.sub(r"|\s*Bot Information\s*|\s*\n|\s*---\s*|\s*\n|.*?|", "", text, flags=re.DOTALL)
     text = re.sub(r"\n\s*\*\*Information\*\*\s*\n", "\n", text)
-    text = re.sub(r"##? Views:\n\n\| \*\*Article Overview\*\* \|\n\| --- \|\n\|.*?\|", "", text, flags=re.DOTALL)
-    text = re.sub(r"Views:\n\n\| \*\*Article Overview\*\* \|\n\| --- \|\n\|.*?\|", "", text, flags=re.DOTALL)
-    text = re.sub(r"^\| Information \|\n", "", text, flags=re.MULTILINE)
+    text = re.sub(r"##? Views:\n\n| **Article Overview** |\n| --- |\n|.*?|", "", text, flags=re.DOTALL)
+    text = re.sub(r"Views:\n\n| **Article Overview** |\n| --- |\n|.*?|", "", text, flags=re.DOTALL)
+    text = re.sub(r"^| Information |\n", "", text, flags=re.MULTILINE)
     text = re.sub(r"\*\s*(Home|Knowledge Base - Home|KA-\d+)\s*\n", "", text)
     text = re.sub(
-        r"(You’re offline.*?Knowledge Articles|Contoso, Ltd\.|BYU-Pathway Worldwide|Toggle navigation[.\w\s\*\+\-\:]+|Search Filter|Search\n|Knowledge Article Key:)",
+        r"(You’re offline.*?Knowledge Articles|Contoso, Ltd.|BYU-Pathway Worldwide|Toggle navigation[.\w\s\*\+\-\: ]+|Search Filter|Search\n|Knowledge Article Key:)",
         "",
         text,
     )
-    text = re.sub(r"You’re offline\. This is a read only version of the page\.", "", text)
+    text = re.sub(r"You’re offline. This is a read only version of the page.", "", text)
 
     # Others regular expressions to remove unnecessary text
     # Remove empty headers
@@ -91,7 +91,7 @@ def clean_markdown(text):
     # text = re.sub(r"(Skip to content|Menu|[*+-].*)\n", '', text, flags=re.MULTILINE)
 
     # Remove broken links
-    text = re.sub(r"\[([^\]]+)\]\.\n\n\((http[^\)]+)\) \(([^)]+)\)\.", r"\1 (\3).", text)
+    text = re.sub(r"\[([^\]]+)\]\.\n\n\((http[^)]+)\) \(([^)]+)\)\.", r"\1 (\3).", text)
 
     # Remove consecutive blank lines
     text = re.sub(r"\n\s*\n\s*\n", "\n\n", text)
@@ -341,6 +341,7 @@ def parse_txt_to_md(file_path, file_extension, title_tag=""):
     global documents_rescued_by_fallback
     global documents_failed_after_fallback
     global documents_sent_to_llamaparse_initial
+    global successfully_parsed_documents
 
     with open(file_path, encoding="utf-8") as f:
         content = f.read()
@@ -359,6 +360,7 @@ def parse_txt_to_md(file_path, file_extension, title_tag=""):
                 ).load_data()
             is_empty = all(is_empty_content(doc.text) for doc in documents)
             if not is_empty:
+                successfully_parsed_documents += 1
                 break
             else:
                 if i < 2:
@@ -462,7 +464,7 @@ def associate_markdown_with_metadata(data_path, markdown_dirs, csv_file, exclude
             first_line = lines[0].strip()
 
             # get the url from the metadata
-            url = markdown_metadata_mapping[markdown_path]["url"]
+            url = markdown_metadata_mapping[markdown_path]['url']
             if first_line.startswith("title: "):
                 # Extraer el título de la primera línea
                 title = first_line.replace("title: ", "")
@@ -551,6 +553,7 @@ def process_file(file_path, out_folder):
     """
     Processes a file based on its extension: PDF or HTML.
     """
+    global documents_not_sent_to_llamaparse
 
     txt_file_path = ""
     title_tag = ""
@@ -565,6 +568,9 @@ def process_file(file_path, out_folder):
                 break
             print("Error parsing PDF file. Retrying...")
             time.sleep(4)
+        if txt_file_path == "Error":
+            documents_not_sent_to_llamaparse.append({"id": os.path.basename(file_path), "reason": "Failed to parse PDF"})
+
 
     elif file_path.lower().endswith(".html"):
         # Handle HTML file
@@ -574,6 +580,9 @@ def process_file(file_path, out_folder):
                 break
             print("Error converting HTML file. Retrying...")
             time.sleep(4)
+        if title_tag == "Error parsing.":
+            documents_not_sent_to_llamaparse.append({"id": os.path.basename(file_path), "reason": "Failed to convert HTML"})
+
 
     if title_tag != "Error parsing.":
         # try a maximum of 3 times to parse the txt file to md
@@ -618,6 +627,12 @@ def process_directory(origin_path, out_folder):
     global documents_sent_to_llamaparse_initial
     documents_sent_to_llamaparse_initial = 0
 
+    global successfully_parsed_documents
+    successfully_parsed_documents = 0
+
+    global documents_not_sent_to_llamaparse
+    documents_not_sent_to_llamaparse = []
+
     for root, _dirs, files in os.walk(origin_path):
         if "error" in root:
             continue
@@ -626,7 +641,7 @@ def process_directory(origin_path, out_folder):
                 file_path = os.path.join(root, file)
                 print(f"Processing file: {file_path}")
                 process_file(file_path, out_folder)
-    return llama_parse_count, indexed_count, empty_files_count, documents_retried, documents_rescued_by_fallback, documents_failed_after_fallback, documents_sent_to_llamaparse_initial
+    return llama_parse_count, indexed_count, empty_files_count, documents_retried, documents_rescued_by_fallback, documents_failed_after_fallback, documents_sent_to_llamaparse_initial, successfully_parsed_documents, documents_not_sent_to_llamaparse
 
 
 def add_titles_tag(input_directory, out_folder):

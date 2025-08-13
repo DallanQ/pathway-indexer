@@ -100,11 +100,14 @@ async def crawl_csv(df, base_dir, output_file="output_data.csv"):
     create_folder(crawl_path, "others")
 
     output_data = []
-    total_documents_crawled = len(df)
-    total_documents_failed_during_crawl = 0
+    expected_total_documents = len(df)
+    crawled_documents = []
+    failed_documents = []
+    missing_documents = []
+
 
     async def process_row(row):
-        nonlocal total_documents_failed_during_crawl
+        nonlocal failed_documents, missing_documents, crawled_documents
         url = row["URL"]
         heading = row["Section"]
         sub_heading = row["Subsection"]
@@ -112,6 +115,7 @@ async def crawl_csv(df, base_dir, output_file="output_data.csv"):
         filename = row["filename"]
 
         if "sharepoint.com" in url or url == "https://www.byupathway.edu/pathwayconnect-block-academic-calendar":
+            missing_documents.append({"id": filename, "reason": "Skipped SharePoint or calendar link"})
             return
 
         html_filepath = os.path.join(crawl_path, "html", f"{filename}.html")
@@ -119,6 +123,7 @@ async def crawl_csv(df, base_dir, output_file="output_data.csv"):
 
         if os.path.exists(html_filepath) or os.path.exists(pdf_filepath):
             print(f"File already exists for {filename}. Skipping fetch.")
+            missing_documents.append({"id": filename, "reason": "File already exists"})
             return
 
         retry_attempts = 3
@@ -195,6 +200,7 @@ async def crawl_csv(df, base_dir, output_file="output_data.csv"):
                         f.write(response.content)
 
                 content_hash = generate_content_hash(content)
+                crawled_documents.append(filename)
 
                 output_data.append([
                     heading,
@@ -202,7 +208,7 @@ async def crawl_csv(df, base_dir, output_file="output_data.csv"):
                     title,
                     url,
                     filepath,
-                    content_type.split("/")[1].split(";")[0],
+                    content_type.split("/")[-1].split(";")[0],
                     content_hash,
                     datetime.datetime.now().isoformat(),
                 ])
@@ -214,6 +220,7 @@ async def crawl_csv(df, base_dir, output_file="output_data.csv"):
                     print(f"Access forbidden for {url}: {http_err}. Using Playwright to fetch HTML.")
                     html_filepath = os.path.join(crawl_path, "html", f"{filename}.html")
                     await fetch_content_with_playwright(url, html_filepath)
+                    crawled_documents.append(filename)
                     output_data.append([
                         heading,
                         sub_heading,
@@ -232,7 +239,7 @@ async def crawl_csv(df, base_dir, output_file="output_data.csv"):
                         print("Retrying in 10 seconds...")
                         time.sleep(10)
                     else:
-                        total_documents_failed_during_crawl += 1
+                        failed_documents.append({"id": filename, "reason": str(http_err)})
                         output_data.append([
                             heading,
                             sub_heading,
@@ -251,7 +258,7 @@ async def crawl_csv(df, base_dir, output_file="output_data.csv"):
                     print("Retrying in 10 seconds...")
                     time.sleep(10)
                 else:
-                    total_documents_failed_during_crawl += 1
+                    failed_documents.append({"id": filename, "reason": str(err)})
                     print(f"No content-type header found for {url}: {err}")
                     output_data.append([
                         heading,
@@ -304,4 +311,4 @@ async def crawl_csv(df, base_dir, output_file="output_data.csv"):
         output_df.to_csv(out_path, index=False)
 
     print(f"Processing completed. Output saved to {out_path}")
-    return total_documents_crawled, total_documents_failed_during_crawl
+    return expected_total_documents, len(crawled_documents), failed_documents, missing_documents

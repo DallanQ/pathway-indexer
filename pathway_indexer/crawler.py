@@ -19,9 +19,9 @@ def crawl_data():
         """Crawl the index and get the data."""
         df = pd.read_csv(os.path.join(DATA_PATH, "all_links.csv"))
         # filter only the urls from whatsapp
-        total_documents_crawled, total_documents_failed_during_crawl = await crawl_csv(df=df, base_dir=DATA_PATH)
-        return total_documents_crawled, total_documents_failed_during_crawl
+        expected_total_documents, total_documents_crawled, failed_documents, missing_documents = await crawl_csv(df=df, base_dir=DATA_PATH)
+        return expected_total_documents, total_documents_crawled, failed_documents, missing_documents
 
     loop = asyncio.get_event_loop()
-    total_documents_crawled, total_documents_failed_during_crawl = loop.run_until_complete(main())
-    return total_documents_crawled, total_documents_failed_during_crawl
+    expected_total_documents, total_documents_crawled, failed_documents, missing_documents = loop.run_until_complete(main())
+    return expected_total_documents, total_documents_crawled, failed_documents, missing_documents

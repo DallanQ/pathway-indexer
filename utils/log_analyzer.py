@@ -18,47 +18,27 @@ def analyze_logs():
     # Prepare metrics_explanation.log path
     metrics_explanation_path = os.path.join(DATA_PATH, "metrics_explanation.log")
 
-    # Directly read ACM, Missionary, Help, and Student Services link counts from all_links.csv
-    all_links_csv = os.path.join(DATA_PATH, "all_links.csv")
-    acm_links = 0
-    missionary_links = 0
-    help_links = 0
-    student_services_links = 0
-    
-    # Check if the CSV exists first
-    if os.path.exists(all_links_csv):
-        df = pd.read_csv(all_links_csv)
-        
-        # Read from individual index CSV files if they exist
-        index_path = os.path.join(DATA_PATH, "index")
-        acm_path = os.path.join(index_path, "acm.csv")
-        missionary_path = os.path.join(index_path, "missionary.csv") 
-        help_path = os.path.join(index_path, "help.csv")
-        student_services_path = os.path.join(index_path, "student_services.csv")
-        
-        # Get counts from individual index files if they exist, otherwise count by URL pattern
-        if os.path.exists(acm_path) and os.path.exists(missionary_path) and os.path.exists(help_path) and os.path.exists(student_services_path):
-            acm_df = pd.read_csv(acm_path)
-            missionary_df = pd.read_csv(missionary_path)
-            help_df = pd.read_csv(help_path)
-            student_services_df = pd.read_csv(student_services_path)
-            
-            acm_links = len(acm_df)
-            missionary_links = len(missionary_df)
-            help_links = len(help_df)
-            student_services_links = len(student_services_df)
-        else:
-            # Fallback to URL pattern matching if individual files don't exist
-            for _, row in df.iterrows():
-                url = str(row["URL"]).lower() if not pd.isna(row["URL"]) else ""
-                if "help.byupathway.edu" in url:
-                    help_links += 1
-                elif "student-services.catalog" in url:
-                    student_services_links += 1
-                elif "acc-site-index" in url:
-                    acm_links += 1
-                else:
-                    missionary_links += 1
+    # Get ACM, Missionary, Help, and Student Services link counts by reading individual index CSVs
+    index_path = os.path.join(DATA_PATH, "index")
+    acm_path = os.path.join(index_path, "acm.csv")
+    missionary_path = os.path.join(index_path, "missionary.csv")
+    help_path = os.path.join(index_path, "help.csv")
+    student_services_path = os.path.join(index_path, "student_services.csv")
+
+    acm_links = missionary_links = help_links = student_services_links = 0
+
+    if os.path.exists(acm_path):
+        acm_df = pd.read_csv(acm_path)
+        acm_links = len(acm_df)
+    if os.path.exists(missionary_path):
+        missionary_df = pd.read_csv(missionary_path)
+        missionary_links = len(missionary_df)
+    if os.path.exists(help_path):
+        help_df = pd.read_csv(help_path)
+        help_links = len(help_df)
+    if os.path.exists(student_services_path):
+        student_services_df = pd.read_csv(student_services_path)
+        student_services_links = len(student_services_df)
     # Prepare index summary string listing all links (professional format)
     index_summary = f"""
 ========================================================
@@ -73,7 +53,9 @@ Student Services Links: {student_services_links}
 
     # Collect log analyzer output into a string (professional format)
     output_lines = []
-    output_lines.append("\n========================================================\n                PIPELINE LOG ANALYSIS\n========================================================\n")
+    output_lines.append(
+        "\n========================================================\n                PIPELINE LOG ANALYSIS\n========================================================\n"
+    )
 
     crawl_counts = defaultdict(int)
     parse_counts = defaultdict(int)
@@ -127,18 +109,24 @@ Student Services Links: {student_services_links}
             for url in missing_urls:
                 output_lines.append(f"    • {url}\n")
 
-        output_lines.append("\n--------------------------------------------------------\n                CRAWL STAGE RESULTS\n--------------------------------------------------------\n")
+        output_lines.append(
+            "\n--------------------------------------------------------\n                CRAWL STAGE RESULTS\n--------------------------------------------------------\n"
+        )
         output_lines.append(f"Total files processed:                 {sum(crawl_counts.values())}\n")
         for status, count in crawl_counts.items():
             output_lines.append(f"{status:30}: {count}\n")
 
-        output_lines.append("\n--------------------------------------------------------\n                PARSE STAGE RESULTS\n--------------------------------------------------------\n")
+        output_lines.append(
+            "\n--------------------------------------------------------\n                PARSE STAGE RESULTS\n--------------------------------------------------------\n"
+        )
         output_lines.append(f"Total unique files processed:           {len(parse_filepaths)}\n")
         for status, count in parse_counts.items():
             output_lines.append(f"{status:30}: {count}\n")
 
         if failed_http_errors:
-            output_lines.append(f"\n--------------------------------------------------------\n                HTTP ERRORS\n--------------------------------------------------------\n")
+            output_lines.append(
+                "\n--------------------------------------------------------\n                HTTP ERRORS\n--------------------------------------------------------\n"
+            )
             output_lines.append(f"FAILED_HTTP_ERROR ({len(failed_http_errors)}):\n")
             for error in failed_http_errors:
                 filepath = error.get("filepath") if error.get("filepath") is not None else "N/A"
@@ -149,7 +137,9 @@ Student Services Links: {student_services_links}
             )
 
         if direct_loads:
-            output_lines.append(f"\n--------------------------------------------------------\n                DIRECT LOADS\n--------------------------------------------------------\n")
+            output_lines.append(
+                "\n--------------------------------------------------------\n                DIRECT LOADS\n--------------------------------------------------------\n"
+            )
             output_lines.append(f"DIRECT_LOAD ({len(direct_loads)}):\n")
             for load in direct_loads:
                 filepath = load.get("filepath") if load.get("filepath") is not None else "N/A"

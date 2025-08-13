@@ -48,9 +48,9 @@ def main():
         "files_skipped_due_to_no_change": 0,
         "files_processed": 0,
         "documents_sent_to_llamaparse": 0,
-        "documents_empty_from_llamaparse": 0,  # formerly rescued_by_fallback
-        "documents_successful_after_retries": 0,  # formerly rescued_by_fallback
-        "documents_failed_after_retries": 0,  # formerly failed_after_fallback
+        "documents_empty_from_llamaparse": 0,
+        "documents_successful_after_retries": 0,
+        "documents_failed_after_retries": 0,
         "md_files_generated": 0,
         "files_with_only_metadata": 0,
         "files_processed_outside_change_detection": 0,

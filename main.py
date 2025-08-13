@@ -12,6 +12,7 @@ from pathway_indexer.memory import (
     update_crawl_timestamp,
 )
 from pathway_indexer.parser import parse_files_to_md
+from utils.log_analyzer import analyze_logs
 
 
 def inspect_md_files(stats):
@@ -44,17 +45,18 @@ def main():
     start_time = time.time()
     stats = {
         "total_documents_crawled": 0,
-        "unique_files_processed": 0,
+        "files_skipped_due_to_no_change": 0,
+        "files_processed": 0,
         "documents_sent_to_llamaparse": 0,
-        "documents_empty_from_llamaparse": 0,  # formerly rescued_by_fallback
-        "documents_successful_after_retries": 0,  # formerly rescued_by_fallback
-        "documents_failed_after_retries": 0,  # formerly failed_after_fallback
+        "documents_empty_from_llamaparse": 0,
+        "documents_successful_after_retries": 0,
+        "documents_failed_after_retries": 0,
         "md_files_generated": 0,
         "files_with_only_metadata": 0,
         "files_processed_outside_change_detection": 0,
     }
-    detail_json_path = "data/last_crawl_detail.json"
-    output_data_path = "data/last_output_data.csv"
+    detail_json_path = os.path.join(DATA_PATH, "last_crawl_detail.json")
+    output_data_path = os.path.join(DATA_PATH, "last_output_data.csv")
     detailed_log_path = os.path.join(DATA_PATH, "pipeline_detailed_log.jsonl")
 
     # Ensure the parent directory for the detailed log file exists
@@ -68,7 +70,7 @@ def main():
     last_data_json = initialize_json_file(detail_json_path, output_data_path)
 
     print("===>Getting indexes...\n")
-    get_indexes()
+    stats["total_documents_crawled"] = get_indexes()
 
     print("Crawler Started...\n")
     crawl_data(stats, detailed_log_path)
@@ -77,9 +79,7 @@ def main():
     # Ensure the key exists before parsing
     stats["files_processed_by_directory"] = 0
     parse_files_to_md(last_data_json=last_data_json, stats=stats, detailed_log_path=detailed_log_path)
-    stats["files_processed_outside_change_detection"] = (
-        stats["files_processed_by_directory"] - stats["unique_files_processed"]
-    )
+    # files_processed_outside_change_detection is set in parser.py as len(pdf_df)
 
     print("===>Updating crawl timestamp...\n")
     update_crawl_timestamp(detail_json_path, DATA_PATH)
@@ -112,8 +112,11 @@ Pipeline Metrics
 => total_documents_crawled: {stats.get("total_documents_crawled", "N/A")}
 Number of URLs found and listed for crawling.
 
-=> unique_files_processed: {stats.get("unique_files_processed", "N/A")}
-Number of files determined as changed and needing processing (if zero, change detection found none; all files processed outside change detection).
+=> files_skipped_due_to_no_change: {stats.get("files_skipped_due_to_no_change", "N/A")}
+Number of files that were not changed and therefore not processed again.
+
+=> files_processed: {stats.get("files_processed", "N/A")}
+Number of files that were processed (either new or changed).
 
 => documents_sent_to_llamaparse: {stats.get("documents_sent_to_llamaparse", "N/A")}
 Number of files sent to LlamaParse for conversion to markdown.
@@ -147,6 +150,8 @@ Total time taken for the pipeline run.
         f.write(metrics_explanation)
     # Print path relative to repo root, starting from DATA_PATH
     rel_path = os.path.relpath(metrics_explanation_path, start=os.getcwd())
+    analyze_logs()
+
     print(f"\nWhat do these numbers mean? See ./{rel_path}")
 
 

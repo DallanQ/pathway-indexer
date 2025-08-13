@@ -57,7 +57,6 @@ def get_indexes():
     # Crawling Process
     acm_data = crawl_index(ACM_URL, acm_selectors)
     print("ACM data collected!")
-    feature/acm-indexing-with-logging
     print(f"Length of ACM data: {len(acm_data)}")
     print()
 
@@ -139,3 +138,5 @@ def get_indexes():
     print(f"All links saved in {DATA_PATH}/all_links.csv")
     print("Process finished! Links ready to be crawled.")
     print()
+
+    return len(df_merged)

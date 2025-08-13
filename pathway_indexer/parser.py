@@ -24,7 +24,7 @@ def parse_files_to_md(
     out_folder=OUT_PATH,
     metadata_csv="all_links.csv",
     excluded_domains_path=EXCLUDED_PATH,
-    last_output_data_path="data/last_output_data.csv",
+    last_output_data_path=os.path.join(DATA_PATH, "last_output_data.csv"),
 ):
     """
     Main function to process a directory containing HTML and PDF files and attach metadata, avoiding parsing files with unchanged content.
@@ -33,9 +33,7 @@ def parse_files_to_md(
 
     # print(last_data_json["last_folder_crawl"])
 
-    files_to_process = analyze_file_changes(
-        output_data_path, last_output_data_path, out_folder, last_data_json, stats
-    )
+    files_to_process = analyze_file_changes(output_data_path, last_output_data_path, out_folder, last_data_json, stats)
     if not files_to_process.empty:
         empty_llamaparse_files_counted = set()
         process_modified_files(
@@ -53,9 +51,7 @@ def parse_files_to_md(
     print("All tasks completed successfully.")
 
 
-def analyze_file_changes(
-    output_data_path, last_output_data_path, out_folder, last_data_json, stats
-):
+def analyze_file_changes(output_data_path, last_output_data_path, out_folder, last_data_json, stats):
     """
     Analyze file changes by comparing current and last output data based on Content Hash,
     only for HTML files. PDF files are always included in files_to_process.
@@ -80,6 +76,12 @@ def analyze_file_changes(
 
     if not os.path.exists(last_output_data_path):
         print("Last output data file not found; processing all files.")
+        stats["files_processed"] = len(current_df)
+        stats["files_skipped_due_to_no_change"] = 0
+        stats["files_processed_outside_change_detection"] = len(current_df[current_df["Content Type"] == "pdf"])
+        with open(os.path.join(DATA_PATH, "processed_files.log"), "w") as f:
+            for _, row in current_df.iterrows():
+                f.write(f"{row["URL"]}\n")
         return current_df  # Process all files if no last output data
 
     last_df = pd.read_csv(last_output_data_path)
@@ -115,8 +117,20 @@ def analyze_file_changes(
     # Combine changed HTML files with all PDF files for processing
     files_to_process = pd.concat([changed_html_files, pdf_df], ignore_index=True)
 
-    stats["unique_files_processed"] = len(files_to_process)
+    stats["files_skipped_due_to_no_change"] = len(unchanged_html_files)
+    stats["files_processed_outside_change_detection"] = len(pdf_df)
 
+    # Log skipped files
+    with open(os.path.join(DATA_PATH, "skipped_files.log"), "w") as f:
+        for _, row in unchanged_html_files.iterrows():
+            f.write(f"{row["URL"]}\n")
+
+    # Log files to be processed
+    with open(os.path.join(DATA_PATH, "processed_files.log"), "w") as f:
+        for _, row in files_to_process.iterrows():
+            f.write(f"{row["URL"]}\n")
+
+    stats["files_processed"] = len(files_to_process)
     return files_to_process
 
 
@@ -141,7 +155,7 @@ def process_modified_files(
     stats["files_processed_by_directory"] = process_directory(
         input_directory, out_folder, stats, empty_llamaparse_files_counted, detailed_log_path
     )  # convert the files to md
-  
+
     print("File processing for modified files completed.")
 
     add_titles_tag(input_directory, out_folder)

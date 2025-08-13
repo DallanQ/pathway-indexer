@@ -159,9 +159,10 @@ Student Services Links: {student_services_links}
                 "  *The pipeline detected that the following file[s] was a plain text file and did not require markdown conversion via LlamaParse. Instead, it was read and processed as-is. So these TXT files are handled by direct loading, bypassing LlamaParse, since they are already in a simple text format suitable for further processing.*\n"
             )
 
-    # Write combined output to metrics_explanation.log (overwrite for clarity)
-    with open(metrics_explanation_path, "w") as f:
+    # Write combined output to metrics_explanation.log (append to the file)
+    with open(metrics_explanation_path, "a") as f:
         f.write(index_summary)
+        f.write("".join(output_lines))
 
 
 if __name__ == "__main__":

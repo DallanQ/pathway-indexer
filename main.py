@@ -32,7 +32,10 @@ def main():
     expected_total_documents, total_documents_crawled, failed_documents, missing_documents = crawl_data()
     total_documents_sent_for_parsing = total_documents_crawled
 
-    print("\n--- Crawl Summary ---")
+    print("===>Starting parser...\n")
+    llama_parse_count, indexed_count, empty_files_count, documents_retried, documents_rescued_by_fallback, documents_failed_after_fallback, files_with_only_metadata, files_with_error_messages, files_with_empty_content, documents_sent_to_llamaparse_initial, successfully_parsed_documents, documents_not_sent_to_llamaparse = parse_files_to_md(last_data_json=last_data_json)
+
+    print("\n--- Crawl and Parser Summary ---")
     print(f"Expected total documents: {expected_total_documents}")
     print(f"Total documents crawled: {total_documents_crawled}")
     print(f"Total documents failed during crawl: {len(failed_documents)}")
@@ -48,12 +51,6 @@ def main():
         for doc in missing_documents:
             print(f"  - ID: {doc['id']}, Reason: {doc['reason']}")
 
-    print("----------------------\n")
-
-    print("===>Starting parser...\n")
-    llama_parse_count, indexed_count, empty_files_count, documents_retried, documents_rescued_by_fallback, documents_failed_after_fallback, files_with_only_metadata, files_with_error_messages, files_with_empty_content, documents_sent_to_llamaparse_initial, successfully_parsed_documents, documents_not_sent_to_llamaparse = parse_files_to_md(last_data_json=last_data_json)
-
-    print("\n--- Parser Summary ---")
     print(f"Total documents sent for parsing: {total_documents_sent_for_parsing}")
     print(f"Documents sent to LlamaParse (initial attempts): {documents_sent_to_llamaparse_initial}")
     print(f"Documents not sent to LlamaParse: {len(documents_not_sent_to_llamaparse)}")

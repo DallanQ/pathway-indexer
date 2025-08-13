@@ -78,7 +78,7 @@ def analyze_file_changes(output_data_path, last_output_data_path, out_folder, la
         print("Last output data file not found; processing all files.")
         stats["files_processed"] = len(current_df)
         stats["files_skipped_due_to_no_change"] = 0
-        stats["files_processed_outside_change_detection"] = len(current_df[current_df["Content Type"] == "pdf"])
+        stats["pdf_files_always_processed"] = len(current_df[current_df["Content Type"] == "pdf"])
         with open(os.path.join(DATA_PATH, "processed_files.log"), "w") as f:
             for _, row in current_df.iterrows():
                 f.write(f"{row["URL"]}\n")
@@ -118,7 +118,7 @@ def analyze_file_changes(output_data_path, last_output_data_path, out_folder, la
     files_to_process = pd.concat([changed_html_files, pdf_df], ignore_index=True)
 
     stats["files_skipped_due_to_no_change"] = len(unchanged_html_files)
-    stats["files_processed_outside_change_detection"] = len(pdf_df)
+    stats["pdf_files_always_processed"] = len(pdf_df)
 
     # Log skipped files
     with open(os.path.join(DATA_PATH, "skipped_files.log"), "w") as f:

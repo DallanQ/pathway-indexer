@@ -144,9 +144,9 @@ Student Services Links: {student_services_links}
             for load in direct_loads:
                 filepath = load.get("filepath") if load.get("filepath") is not None else "N/A"
                 output_lines.append(f"    • {filepath}\n      URL: {load.get('url')}\n")
-            output_lines.append('  Message: "Loaded TXT file directly without LlamaParse."\n')
+            output_lines.append('  Message: "Text files loaded directly without LlamaParse due to markdown table detection."\n')
             output_lines.append(
-                "  *The pipeline detected that the following file[s] was a plain text file and did not require markdown conversion via LlamaParse. Instead, it was read and processed as-is. So these TXT files are handled by direct loading, bypassing LlamaParse, since they are already in a simple text format suitable for further processing.*\n"
+                "  *These files were processed by the has_markdown_tables() function in utils/parser.py and loaded directly via SimpleDirectoryReader because they contain markdown tables (patterns like |...|...|). Since they are already well-formatted, LlamaParse conversion is skipped to preserve table structure and avoid unnecessary processing.*\n"
             )
 
     # Write combined output to metrics_explanation.log (append to the file)

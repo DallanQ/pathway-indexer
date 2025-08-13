@@ -53,7 +53,7 @@ def main():
         "documents_failed_after_retries": 0,
         "md_files_generated": 0,
         "files_with_only_metadata": 0,
-        "files_processed_outside_change_detection": 0,
+        "pdf_files_always_processed": 0,
     }
     detail_json_path = os.path.join(DATA_PATH, "last_crawl_detail.json")
     output_data_path = os.path.join(DATA_PATH, "last_output_data.csv")
@@ -79,7 +79,7 @@ def main():
     # Ensure the key exists before parsing
     stats["files_processed_by_directory"] = 0
     parse_files_to_md(last_data_json=last_data_json, stats=stats, detailed_log_path=detailed_log_path)
-    # files_processed_outside_change_detection is set in parser.py as len(pdf_df)
+    # pdf_files_always_processed is set in parser.py as len(pdf_df)
 
     print("===>Updating crawl timestamp...\n")
     update_crawl_timestamp(detail_json_path, DATA_PATH)
@@ -136,8 +136,8 @@ Total markdown files created (one per input file).
 => files_with_only_metadata: {stats.get("files_with_only_metadata", "N/A")}
 Markdown files that contain only metadata (no actual content).
 
-=> files_processed_outside_change_detection: {stats.get("files_processed_outside_change_detection", "N/A")}
-All files were processed outside change detection.
+=> pdf_files_always_processed: {stats.get("pdf_files_always_processed", "N/A")}
+All PDF files bypass change detection and are always processed because PDF content cannot be reliably compared for changes.
 
 => files_processed_by_directory: {stats.get("files_processed_by_directory", "N/A")}
 Total files processed by the directory parser (should match input count).

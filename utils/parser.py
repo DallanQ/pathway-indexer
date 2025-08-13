@@ -429,7 +429,7 @@ def parse_txt_to_md(file_path, file_extension, stats, empty_llamaparse_files_cou
     return False
 
 
-def associate_markdown_with_metadata(data_path, markdown_dirs, csv_path, excluded_domains):
+def associate_markdown_with_metadata(markdown_dirs, csv_path, excluded_domains):
     """
     Associates Markdown files with metadata from a CSV file.
 

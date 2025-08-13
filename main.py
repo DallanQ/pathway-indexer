@@ -55,9 +55,9 @@ def main():
         "files_with_only_metadata": 0,
         "pdf_files_always_processed": 0,
     }
-    # Put last_crawl_detail.json in the root data directory (parent of DATA_PATH, adata...)
-    detail_json_path = os.path.join(os.path.dirname(DATA_PATH), "last_crawl_detail.json")
-    output_data_path = os.path.join(DATA_PATH, "last_output_data.csv")
+    detail_json_path = "data/last_crawl_detail.json"
+    output_data_path = "data/last_output_data.csv"
+
     detailed_log_path = os.path.join(DATA_PATH, "pipeline_detailed_log.jsonl")
 
     # Ensure the parent directory for the detailed log file exists

@@ -43,34 +43,36 @@ def is_empty_content(content):
 
 
 def clean_markdown(text):
-    text = re.sub(r"```markdown", "", text)
+    text = re.sub(r"```markdown+", "", text)
 
-    # Remove Markdown code blocks
-    text = re.sub(r"```[\w]*\n?", "", text)
+    # Remove Markdown backticks
+    text = re.sub(r"```+", "", text)
 
-    # Remove inline code backticks
-    text = re.sub(r"`([^`]*)`", r"\1", text)
+    # Remove inline code backticks (`text`)
+    text = re.sub(r"`+", "", text)
 
     text = re.sub(r"\[Print\]\(javascript:window\.print\(\)\)", "", text)
 
-    # Remove repeated links
-    text = re.sub(r"(https?:\/\/[^\s]+)(\s+\1)+", r"\1", text)
-
+    # Remove list of links with same anchors
+    text = re.sub(r"(?:(https?:\/\/[^\s]+)\s+){2,}", "", text)  # Remove repeated links
+    
     # Replace [link](#) and [link](url) with link text only
     text = re.sub(r"\[([^\]]+)\]\(([^)]+)\)", r"\1", text)
 
     # Remove lists of links to the same page (e.g., [All](#) [Web Pages](#))
-    text = re.sub(r"(\[([^\]]+)\]\(#\)[\s,]*)+", "", text)
+    text = re.sub(r"(\[([^\]]+)\]\(#\))+(?:\s|,)*", "", text)
 
+    # Regular expression to remove unnecessary text from
+    # knowledge base articles
     # Remove specific table headers
-    text = re.sub(r"\| \*\*Bot Information\*\* \|\n\| ---\|", "", text)
-    text = re.sub(r"\| \*\*Information\*\* \|\n\| ---\|", "", text)
-    text = re.sub(r"Views:\n\n\|\s*Article Overview\s*\|\s*\n\|\s*---\|\s*\|.*?\|", "", text, flags=re.DOTALL)
-    text = re.sub(r"\|\s*Information\s*\|\s*\n\|\s*---\|\s*\|.*?\|", "", text, flags=re.DOTALL)
-    text = re.sub(r"\|\s*Bot Information\s*\|\s*\n\|\s*---\|\s*\|.*?\|", "", text, flags=re.DOTALL)
+    text = re.sub(r"\| \*\*Bot Information\*\* \|\n\| --- \|", "", text)
+    text = re.sub(r"\| \*\*Information\*\* \|\n\| --- \|", "", text)
+    text = re.sub(r"Views:\n\n\|\s*Article Overview\s*\|\s*\n\|\s*---\s*\|\s*\n\|.*?\|", "", text, flags=re.DOTALL)
+    text = re.sub(r"\|\s*Information\s*\|\s*\n\|\s*---\s*\|\s*\n\|.*?\|", "", text, flags=re.DOTALL)
+    text = re.sub(r"\|\s*Bot Information\s*\|\s*\n\|\s*---\s*\|\s*\n\|.*?\|", "", text, flags=re.DOTALL)
     text = re.sub(r"\n\s*\*\*Information\*\*\s*\n", "\n", text)
-    text = re.sub(r"##? Views:\n\n\| \*\*Article Overview\*\* \|\n\| ---\|\n\|.*?\|", "", text, flags=re.DOTALL)
-    text = re.sub(r"Views:\n\n\| \*\*Article Overview\*\* \|\n\| ---\|\n\|.*?\|", "", text, flags=re.DOTALL)
+    text = re.sub(r"##? Views:\n\n\| \*\*Article Overview\*\* \|\n\| --- \|\n\|.*?\|", "", text, flags=re.DOTALL)
+    text = re.sub(r"Views:\n\n\| \*\*Article Overview\*\* \|\n\| --- \|\n\|.*?\|", "", text, flags=re.DOTALL)
     text = re.sub(r"^\| Information \|\n", "", text, flags=re.MULTILINE)
     text = re.sub(r"\*\s*(Home|Knowledge Base - Home|KA-\d+)\s*\n", "", text)
     text = re.sub(
@@ -79,16 +81,20 @@ def clean_markdown(text):
         text,
     )
     text = re.sub(r"You're offline\. This is a read only version of the page\.", "", text)
-
+    
+    # Others regular expressions to remove unnecessary text
     # Remove empty headers
     text = re.sub(r"^#+\s*$", "", text, flags=re.MULTILINE)
 
     # Remove text from WhatsApp navigation
     text = re.sub(r"Copy link\S*", "Copy link", text)
 
+    # Remove text from the hall foundation menu
+    # text = re.sub(r"(Skip to content|Menu|[*+-].*)\n", '', text, flags=re.MULTILINE)
+    
     # Remove broken links
-    text = re.sub(r"\[([^\]]+)\]\.[\n\n]*\((http[^)]+)\) \(([^)]+)\)\.", r"\1 (\3).\n", text)
-
+    text = re.sub(r"\[([^\]]+)\]\.\n\n\((http[^\)]+)\) \(([^)]+)\)\.", r"\1 (\3).", text)
+    
     # Remove consecutive blank lines
     text = re.sub(r"\n\s*\n\s*\n", "\n\n", text)
 
@@ -423,7 +429,7 @@ def parse_txt_to_md(file_path, file_extension, stats, empty_llamaparse_files_cou
     return False
 
 
-def associate_markdown_with_metadata(markdown_dirs, csv_path, excluded_domains):
+def associate_markdown_with_metadata(data_path, markdown_dirs, csv_path, excluded_domains):
     """
     Associates Markdown files with metadata from a CSV file.
 

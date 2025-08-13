@@ -40,6 +40,7 @@ def analyze_logs():
         student_services_df = pd.read_csv(student_services_path)
         student_services_links = len(student_services_df)
     # Prepare index summary string listing all links (professional format)
+    total_index_links = acm_links + missionary_links + help_links + student_services_links
     index_summary = f"""
 ========================================================
                 INDEX COUNTS SUMMARY
@@ -48,6 +49,12 @@ ACM Links:              {acm_links}
 Missionary Links:       {missionary_links}
 Help Links:             {help_links}
 Student Services Links: {student_services_links}
+========================================================
+Total links found in indexes: {total_index_links}
+
+*Note: The total above represents raw counts from individual index files. 
+The final 'total_documents_crawled' count may be lower due to duplicate 
+URL removal during the merging process, which is normal and expected.*
 ========================================================
 """
 

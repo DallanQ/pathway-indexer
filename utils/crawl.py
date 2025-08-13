@@ -54,14 +54,11 @@ async def fetch_content_with_playwright(url, filepath):
     async with async_playwright() as p:
         browser = await p.chromium.launch(headless=True)
         page = await browser.new_page()
-        try:
-            await page.goto(url, timeout=60000)  # 60 seconds timeout
-            time.sleep(5)
-            content = await page.content()
-            with open(filepath, "w", encoding="utf-8") as f:
-                f.write(content)
-        except Exception as e:
-            print(f"Error loading {url}: {e}")
+        await page.goto(url)
+        time.sleep(5)
+        content = await page.content()
+        with open(filepath, "w", encoding="utf-8") as f:
+            f.write(content)
         await browser.close()
 
 

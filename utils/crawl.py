@@ -90,10 +90,6 @@ async def fetch_content_from_student_services(urls):
     return content
 
 
-def handle_http_error(response):
-    raise requests.exceptions.HTTPError(response=response)
-
-
 async def crawl_csv(df, base_dir, output_file="output_data.csv", detailed_log_path=None):  # noqa: C901
 
     """Takes CSV file in the format Heading, Subheading, Title, URL and processes each URL."""
@@ -177,7 +173,7 @@ async def crawl_csv(df, base_dir, output_file="output_data.csv", detailed_log_pa
 
                     log_status = "HTTP_ERROR"
                     log_reason = "Access forbidden (403) - using Playwright fallback"
-                    handle_http_error(response)
+                    raise requests.exceptions.HTTPError(response)
                     
                 elif "text/html" in content_type:
                     content = response.text.encode("utf-8")
@@ -384,10 +380,14 @@ async def crawl_csv(df, base_dir, output_file="output_data.csv", detailed_log_pa
     )
     # Filtering rows where 'Content Hash' is None
     error_df = output_df[output_df["Content Hash"].isnull()]
-    error_csv_path = os.path.join(base_dir, "error.csv")
-
-    # Saving the filtered DataFrame to a CSV file named "error.csv"
-    error_df.to_csv(error_csv_path, index=False)
+    
+    # Create error folder if it doesn't exist
+    error_folder = os.path.join(base_dir, "error")
+    os.makedirs(error_folder, exist_ok=True)
+    
+    # Save error file with new name in error folder
+    failed_http_error_csv_path = os.path.join(error_folder, "failed_http_error.csv")
+    error_df.to_csv(failed_http_error_csv_path, index=False)
 
     out_path = os.path.join(base_dir, output_file)
 

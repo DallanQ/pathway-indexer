@@ -40,6 +40,7 @@ def analyze_logs():
         student_services_df = pd.read_csv(student_services_path)
         student_services_links = len(student_services_df)
     # Prepare index summary string listing all links (professional format)
+    total_index_links = acm_links + missionary_links + help_links + student_services_links
     index_summary = f"""
 ========================================================
                 INDEX COUNTS SUMMARY
@@ -48,6 +49,12 @@ ACM Links:              {acm_links}
 Missionary Links:       {missionary_links}
 Help Links:             {help_links}
 Student Services Links: {student_services_links}
+========================================================
+Total links found in indexes: {total_index_links}
+
+*Note: The total above represents raw counts from individual index files. 
+The final 'total_documents_crawled' count may be lower due to duplicate 
+URL removal during the merging process, which is normal and expected.*
 ========================================================
 """
 
@@ -100,6 +107,15 @@ Student Services Links: {student_services_links}
         log_urls_set = set(log_urls)
         missing_urls = all_links_urls - log_urls_set
 
+        # Create error folder if it doesn't exist and save missing URLs to CSV
+        error_folder = os.path.join(DATA_PATH, "error")
+        os.makedirs(error_folder, exist_ok=True)
+        
+        if missing_urls:
+            missing_urls_df = pd.DataFrame({"URL": list(missing_urls)})
+            missing_urls_csv_path = os.path.join(error_folder, "filtered_missing_sharepoint_links.csv")
+            missing_urls_df.to_csv(missing_urls_csv_path, index=False)
+
         output_lines.append(f"Total URLs in all_links.csv:           {len(all_links_urls)}\n")
         output_lines.append(f"Total URLs processed by crawler:       {len(log_urls_set)}\n")
         output_lines.append(f"Number of missing URLs:                {len(missing_urls)}\n")
@@ -144,9 +160,9 @@ Student Services Links: {student_services_links}
             for load in direct_loads:
                 filepath = load.get("filepath") if load.get("filepath") is not None else "N/A"
                 output_lines.append(f"    • {filepath}\n      URL: {load.get('url')}\n")
-            output_lines.append('  Message: "Loaded TXT file directly without LlamaParse."\n')
+            output_lines.append('  Message: "Text files loaded directly without LlamaParse due to markdown table detection."\n')
             output_lines.append(
-                "  *The pipeline detected that the following file[s] was a plain text file and did not require markdown conversion via LlamaParse. Instead, it was read and processed as-is. So these TXT files are handled by direct loading, bypassing LlamaParse, since they are already in a simple text format suitable for further processing.*\n"
+                "  *These files were processed by the has_markdown_tables() function in utils/parser.py and loaded directly via SimpleDirectoryReader because they contain markdown tables (patterns like |...|...|). Since they are already well-formatted, LlamaParse conversion is skipped to preserve table structure and avoid unnecessary processing.*\n"
             )
 
     # Write combined output to metrics_explanation.log (append to the file)

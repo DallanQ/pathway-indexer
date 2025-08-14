@@ -3,6 +3,7 @@ import os
 import time
 
 import dotenv
+import pandas as pd
 from pinecone import Pinecone, ServerlessSpec
 from llama_index.core import Document
 from llama_index.core.vector_stores.types import VectorStoreQueryMode
@@ -249,13 +250,26 @@ def main():
             if filepath in stats["node_counts_per_file"]:
                 stats["node_counts_per_file"][filepath] += 1
 
+        # Count nodes for each file and track zero-node files for error reporting
+        zero_node_files = []
         for _filepath, count in stats["node_counts_per_file"].items():
             if count == 0:
                 stats["files_with_zero_nodes"] += 1
+                zero_node_files.append(_filepath)
             elif count == 1:
                 stats["files_with_one_node"] += 1
             else:
                 stats["files_with_more_than_one_node"] += 1
+
+        # Save zero-node files to CSV in error folder if any exist
+        if zero_node_files:
+            data_path = os.getenv("DATA_PATH")
+            error_folder = os.path.join(data_path, "error")
+            os.makedirs(error_folder, exist_ok=True)
+            
+            zero_node_df = pd.DataFrame({"Filepath": zero_node_files})
+            zero_node_csv_path = os.path.join(error_folder, "non_indexable_files_report.csv")
+            zero_node_df.to_csv(zero_node_csv_path, index=False)
 
         stats["md_files_loaded_for_indexing"] = len(md_files_loaded_for_indexing)
         end_time = time.time()

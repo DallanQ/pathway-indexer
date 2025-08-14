@@ -24,7 +24,7 @@ def parse_files_to_md(
     out_folder=OUT_PATH,
     metadata_csv="all_links.csv",
     excluded_domains_path=EXCLUDED_PATH,
-    last_output_data_path=os.path.join(DATA_PATH, "last_output_data.csv"),
+    last_output_data_path="data/last_output_data.csv",
 ):
     """
     Main function to process a directory containing HTML and PDF files and attach metadata, avoiding parsing files with unchanged content.

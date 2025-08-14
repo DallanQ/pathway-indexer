@@ -113,7 +113,7 @@ URL removal during the merging process, which is normal and expected.*
         
         if missing_urls:
             missing_urls_df = pd.DataFrame({"URL": list(missing_urls)})
-            missing_urls_csv_path = os.path.join(error_folder, "filtered_missing_sharepoint_links.csv")
+            missing_urls_csv_path = os.path.join(error_folder, "filtered_sharepoint_links.csv")
             missing_urls_df.to_csv(missing_urls_csv_path, index=False)
 
         output_lines.append(f"Total URLs in all_links.csv:           {len(all_links_urls)}\n")

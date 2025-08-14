@@ -253,30 +253,76 @@ def main():
             if filepath and url:
                 filepath_to_url[filepath] = url
 
+        # If URL not found in nodes, try to get full data from all_links.csv using filename
+        filepath_to_full_data = {}
+        if not filepath_to_url:
+            try:
+                all_links_path = os.path.join(os.getenv("DATA_PATH"), "all_links.csv")
+                if os.path.exists(all_links_path):
+                    import pandas as pd
+                    all_links_df = pd.read_csv(all_links_path)
+                    for _, row in all_links_df.iterrows():
+                        if "filename" in row and pd.notna(row["filename"]):
+                            filename = str(row["filename"]).strip()
+                            # Match by filename hash
+                            for md_file in md_files_loaded_for_indexing:
+                                md_filename = os.path.splitext(os.path.basename(md_file))[0]
+                                if md_filename == filename:
+                                    filepath_to_full_data[md_file] = {
+                                        "URL": row.get("URL", "N/A"),
+                                        "Heading": row.get("Heading", "N/A"), 
+                                        "Subheading": row.get("Subheading", "N/A"),
+                                        "Title": row.get("Title", "N/A"),
+                                        "Role": row.get("Role", "N/A"),
+                                        "Filename": row.get("filename", "N/A")
+                                    }
+                                    filepath_to_url[md_file] = row.get("URL", "URL not found")
+            except Exception as e:
+                print(f"Warning: Could not load URLs from all_links.csv: {e}")
+
         for node in nodes:
             filepath = node.metadata.get("filepath")
             if filepath in stats["node_counts_per_file"]:
                 stats["node_counts_per_file"][filepath] += 1
 
         # Count nodes for each file and track zero-node files for error reporting
-        zero_node_files_with_urls = []
+        zero_node_files_with_full_data = []
         for _filepath, count in stats["node_counts_per_file"].items():
             if count == 0:
                 stats["files_with_zero_nodes"] += 1
-                url = filepath_to_url.get(_filepath, "URL not found")
-                zero_node_files_with_urls.append({"Filepath": _filepath, "URL": url})
+                full_data = filepath_to_full_data.get(_filepath)
+                if full_data:
+                    zero_node_files_with_full_data.append({
+                        "Filepath": _filepath,
+                        "URL": full_data["URL"],
+                        "Heading": full_data["Heading"],
+                        "Subheading": full_data["Subheading"], 
+                        "Title": full_data["Title"],
+                        "Role": full_data["Role"],
+                        "Filename": full_data["Filename"]
+                    })
+                else:
+                    zero_node_files_with_full_data.append({
+                        "Filepath": _filepath,
+                        "URL": "URL not found",
+                        "Heading": "N/A",
+                        "Subheading": "N/A",
+                        "Title": "N/A", 
+                        "Role": "N/A",
+                        "Filename": "N/A"
+                    })
             elif count == 1:
                 stats["files_with_one_node"] += 1
             else:
                 stats["files_with_more_than_one_node"] += 1
 
         # Save zero-node files to CSV in error folder if any exist
-        if zero_node_files_with_urls:
+        if zero_node_files_with_full_data:
             data_path = os.getenv("DATA_PATH")
             error_folder = os.path.join(data_path, "error")
             os.makedirs(error_folder, exist_ok=True)
             
-            zero_node_df = pd.DataFrame(zero_node_files_with_urls)
+            zero_node_df = pd.DataFrame(zero_node_files_with_full_data)
             zero_node_csv_path = os.path.join(error_folder, "non_indexable_files_report.csv")
             zero_node_df.to_csv(zero_node_csv_path, index=False)
 

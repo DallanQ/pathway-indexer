@@ -258,7 +258,17 @@ def main():
         try:
             all_links_path = os.path.join(os.getenv("DATA_PATH"), "all_links.csv")
             if os.path.exists(all_links_path):
+                print(f"Loading all_links.csv from: {all_links_path}")
                 all_links_df = pd.read_csv(all_links_path)
+                print(f"Found {len(all_links_df)} rows in all_links.csv")
+                print(f"Columns in all_links.csv: {list(all_links_df.columns)}")
+                
+                # Check if filename column exists
+                if "filename" not in all_links_df.columns:
+                    print("Warning: 'filename' column not found in all_links.csv")
+                    print(f"Available columns: {list(all_links_df.columns)}")
+                
+                matches_found = 0
                 for _, row in all_links_df.iterrows():
                     if "filename" in row and pd.notna(row["filename"]):
                         filename = str(row["filename"]).strip()
@@ -266,6 +276,8 @@ def main():
                         for md_file in md_files_loaded_for_indexing:
                             md_filename = os.path.splitext(os.path.basename(md_file))[0]
                             if md_filename == filename:
+                                matches_found += 1
+                                print(f"Found match: {md_filename} -> {row.get('URL', 'N/A')}")
                                 filepath_to_full_data[md_file] = {
                                     "URL": row.get("URL", "N/A"),
                                     "Heading": row.get("Heading", "N/A"), 
@@ -277,6 +289,11 @@ def main():
                                 # Only update filepath_to_url if not already found from nodes
                                 if md_file not in filepath_to_url:
                                     filepath_to_url[md_file] = row.get("URL", "URL not found")
+                
+                print(f"Total filename matches found: {matches_found}")
+                print(f"Zero-node files to check: {[os.path.splitext(os.path.basename(f))[0] for f in md_files_loaded_for_indexing if f.endswith('.md')]}")
+            else:
+                print(f"all_links.csv not found at: {all_links_path}")
         except Exception as e:
             print(f"Warning: Could not load URLs from all_links.csv: {e}")
 
@@ -290,8 +307,11 @@ def main():
         for _filepath, count in stats["node_counts_per_file"].items():
             if count == 0:
                 stats["files_with_zero_nodes"] += 1
+                print(f"Processing zero-node file: {_filepath}")
+                print(f"Looking for filename: {os.path.splitext(os.path.basename(_filepath))[0]}")
                 full_data = filepath_to_full_data.get(_filepath)
                 if full_data:
+                    print(f"Found full data for {_filepath}: {full_data['URL']}")
                     zero_node_files_with_full_data.append({
                         "Filepath": _filepath,
                         "URL": full_data["URL"],
@@ -302,6 +322,7 @@ def main():
                         "Filename": full_data["Filename"]
                     })
                 else:
+                    print(f"No full data found for {_filepath} - using defaults")
                     zero_node_files_with_full_data.append({
                         "Filepath": _filepath,
                         "URL": "URL not found",

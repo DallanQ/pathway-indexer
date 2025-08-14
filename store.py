@@ -259,7 +259,6 @@ def main():
             try:
                 all_links_path = os.path.join(os.getenv("DATA_PATH"), "all_links.csv")
                 if os.path.exists(all_links_path):
-                    import pandas as pd
                     all_links_df = pd.read_csv(all_links_path)
                     for _, row in all_links_df.iterrows():
                         if "filename" in row and pd.notna(row["filename"]):

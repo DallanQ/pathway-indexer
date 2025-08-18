@@ -105,6 +105,44 @@ def main():
 
     print("===>Process completed")
     print(json.dumps(stats, indent=4))
+
+    # Langfuse data extraction
+    print("\n" + "="*60)
+    print("*** LANGFUSE DATA EXTRACTION ***")
+    print("="*60)
+    
+    try:
+        langfuse_folder = os.path.join(DATA_PATH, "langfuse")
+        
+        print(">>> Starting Langfuse data download (past 30 days)...")
+        traces_csv, observations_csv = download_langfuse_data(langfuse_folder, days=30)
+        
+        print(">>> Processing Langfuse data to extract user inputs...")
+        user_inputs_file = process_langfuse_data(traces_csv, observations_csv, langfuse_folder)
+        
+        print("\n[SUCCESS] Langfuse data extraction completed!")
+        print(f"   >> Langfuse folder: {os.path.relpath(langfuse_folder, start=os.getcwd())}")
+        
+        if traces_csv:
+            print(f"   >> Raw traces: {os.path.basename(traces_csv)}")
+        else:
+            print(f"   >> Raw traces: No traces file created")
+            
+        if observations_csv:
+            print(f"   >> Raw observations: {os.path.basename(observations_csv)}")
+        else:
+            print(f"   >> Raw observations: No observations file created")
+            
+        print(f"   >> Extracted user inputs: {os.path.basename(user_inputs_file)}")
+        
+    except ImportError:
+        print("[WARNING] Langfuse package not installed. Skipping Langfuse data extraction.")
+        print("   To enable this feature, install: pip install langfuse")
+        
+    except Exception as e:
+        print(f"[ERROR] Error during Langfuse data extraction: {e}")
+        print("   Continuing with main pipeline...")
+
     # Write metrics explanation to metrics_explanation.log (overwrite)
     metrics_explanation_path = os.path.join(DATA_PATH, "metrics_explanation.log")
     metrics_explanation = f"""
@@ -154,36 +192,6 @@ Total time taken for the pipeline run.
     # Print path relative to repo root, starting from DATA_PATH
     rel_path = os.path.relpath(metrics_explanation_path, start=os.getcwd())
     analyze_logs()
-
-
-    # Langfuse data extraction
-    print("\n" + "="*60)
-    print("🔗 LANGFUSE DATA EXTRACTION")
-    print("="*60)
-    
-    try:
-        langfuse_folder = os.path.join(DATA_PATH, "langfuse")
-        
-        print("🚀 Starting Langfuse data download (past 30 days)...")
-        traces_csv, observations_csv = download_langfuse_data(langfuse_folder, days=30)
-        
-        print("🔄 Processing Langfuse data to extract user inputs...")
-        user_inputs_file = process_langfuse_data(traces_csv, observations_csv, langfuse_folder)
-        
-        print("\n✅ Langfuse data extraction completed!")
-        print(f"   📁 Langfuse folder: {os.path.relpath(langfuse_folder, start=os.getcwd())}")
-        print(f"   📊 Raw traces: {os.path.basename(traces_csv)}")
-        print(f"   📊 Raw observations: {os.path.basename(observations_csv)}")
-        print(f"   💬 Extracted user inputs: {os.path.basename(user_inputs_file)}")
-        
-    except ImportError:
-        print("⚠️  Langfuse package not installed. Skipping Langfuse data extraction.")
-        print("   To enable this feature, install: pip install langfuse")
-        
-    except Exception as e:
-        print(f"❌ Error during Langfuse data extraction: {e}")
-        print("   Continuing with main pipeline...")
-
 
     print(f"\nWhat do these numbers mean? See ./{rel_path}")
 

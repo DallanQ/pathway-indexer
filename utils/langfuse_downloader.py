@@ -35,7 +35,7 @@ def get_langfuse_client() -> Langfuse:
             "LANGFUSE_SECRET_KEY, and LANGFUSE_HOST are set in .env file"
         )
 
-    print(f"🔐 Connecting to Langfuse at {host}")
+    print(f">>> Connecting to Langfuse at {host}")
     return Langfuse(public_key=public_key, secret_key=secret_key, host=host)
 
 
@@ -52,7 +52,7 @@ def get_time_range(days: int = 30) -> tuple:
     to_ts = datetime.datetime.utcnow()
     from_ts = to_ts - datetime.timedelta(days=days)
 
-    print(f"📅 Fetching data from {from_ts.strftime('%Y-%m-%d')} to {to_ts.strftime('%Y-%m-%d')}")
+    print(f">>> Fetching data from {from_ts.strftime('%Y-%m-%d')} to {to_ts.strftime('%Y-%m-%d')}")
     return from_ts, to_ts
 
 
@@ -72,7 +72,7 @@ def fetch_traces(langfuse_client: Langfuse, from_ts: datetime.datetime, to_ts: d
     page = 1
     limit = 100
 
-    print("📥 Downloading traces from Langfuse...")
+    print(">>> Downloading traces from Langfuse...")
 
     while True:
         try:
@@ -97,10 +97,10 @@ def fetch_traces(langfuse_client: Langfuse, from_ts: datetime.datetime, to_ts: d
             page += 1
 
         except Exception as e:
-            print(f"❌ Error fetching traces on page {page}: {e}")
+            print(f"[ERROR] Error fetching traces on page {page}: {e}")
             break
 
-    print(f"✅ Successfully downloaded {len(all_traces)} traces")
+    print(f"[SUCCESS] Successfully downloaded {len(all_traces)} traces")
     return all_traces
 
 
@@ -117,7 +117,7 @@ def fetch_observations_for_traces(langfuse_client: Langfuse, traces: List[Dict[s
     """
     all_observations = []
 
-    print("📥 Downloading observations from traces...")
+    print(">>> Downloading observations from traces...")
 
     for i, trace in enumerate(traces, 1):
         trace_id = trace.get("id")
@@ -143,21 +143,24 @@ def fetch_observations_for_traces(langfuse_client: Langfuse, traces: List[Dict[s
             print(f"   Warning: Error fetching observations for trace {trace_id}: {e}")
             continue
 
-    print(f"✅ Successfully downloaded {len(all_observations)} observations")
+    print(f"[SUCCESS] Successfully downloaded {len(all_observations)} observations")
     return all_observations
 
 
-def save_to_csv(data: List[Dict[str, Any]], output_path: str) -> None:
+def save_to_csv(data: List[Dict[str, Any]], output_path: str) -> bool:
     """
     Save data to CSV file with proper encoding and error handling.
 
     Args:
         data: List of dictionaries to save
         output_path: Path to output CSV file
+        
+    Returns:
+        bool: True if file was saved, False if no data to save
     """
     if not data:
-        print("⚠️  No data to save")
-        return
+        print("[WARNING] No data to save")
+        return False
 
     # Get all unique keys from all dictionaries
     all_keys = set()
@@ -166,7 +169,7 @@ def save_to_csv(data: List[Dict[str, Any]], output_path: str) -> None:
 
     all_keys = sorted(list(all_keys))
 
-    print(f"💾 Saving {len(data)} records to {output_path}")
+    print(f">>> Saving {len(data)} records to {output_path}")
 
     try:
         with open(output_path, "w", newline="", encoding="utf-8") as csvfile:
@@ -184,10 +187,11 @@ def save_to_csv(data: List[Dict[str, Any]], output_path: str) -> None:
                         row[key] = str(value) if value is not None else ""
                 writer.writerow(row)
 
-        print(f"✅ Successfully saved data to {output_path}")
+        print(f"[SUCCESS] Successfully saved data to {output_path}")
+        return True
 
     except Exception as e:
-        print(f"❌ Error saving to CSV: {e}")
+        print(f"[ERROR] Error saving to CSV: {e}")
         raise
 
 
@@ -224,17 +228,24 @@ def download_langfuse_data(output_folder: str, days: int = 30) -> tuple:
         observations = fetch_observations_for_traces(langfuse_client, traces)
 
         # Save to CSV files
-        save_to_csv(traces, traces_csv)
-        save_to_csv(observations, observations_csv)
+        traces_saved = save_to_csv(traces, traces_csv)
+        observations_saved = save_to_csv(observations, observations_csv)
 
-        print("\n🎉 Langfuse data download completed successfully!")
-        print(f"   Traces saved to: {traces_csv}")
-        print(f"   Observations saved to: {observations_csv}")
+        print("\n[SUCCESS] Langfuse data download completed successfully!")
+        if traces_saved:
+            print(f"   Traces saved to: {traces_csv}")
+        else:
+            print(f"   No traces to save (file not created)")
+            
+        if observations_saved:
+            print(f"   Observations saved to: {observations_csv}")
+        else:
+            print(f"   No observations to save (file not created)")
 
-        return traces_csv, observations_csv
+        return traces_csv if traces_saved else None, observations_csv if observations_saved else None
 
     except Exception as e:
-        print(f"❌ Error during Langfuse data download: {e}")
+        print(f"[ERROR] Error during Langfuse data download: {e}")
         raise
 
 

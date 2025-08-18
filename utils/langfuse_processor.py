@@ -59,7 +59,7 @@ def process_langfuse_data(traces_csv: str, observations_csv: str, output_folder:
     """
     all_user_inputs = []
     
-    print("🔍 Extracting user inputs from Langfuse data...")
+    print(">>> Extracting user inputs from Langfuse data...")
     
     # Process traces - look for 'input' column
     if os.path.exists(traces_csv):
@@ -82,13 +82,13 @@ def process_langfuse_data(traces_csv: str, observations_csv: str, output_folder:
     # Save to text file
     os.makedirs(output_folder, exist_ok=True)
     
-    print(f"💾 Saving {len(all_user_inputs)} user inputs to {output_file}")
+    print(f">>> Saving {len(all_user_inputs)} user inputs to {output_file}")
     
     with open(output_file, 'w', encoding='utf-8') as f:
         for user_input in all_user_inputs:
             f.write(f"{user_input}\n")
     
-    print(f"✅ User inputs extracted successfully!")
+    print(f"[SUCCESS] User inputs extracted successfully!")
     print(f"   Total user inputs saved: {len(all_user_inputs)}")
     print(f"   Output file: {output_file}")
     

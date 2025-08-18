@@ -28,10 +28,10 @@ def extract_user_inputs_from_csv(csv_path: str, input_columns: List[str] = None)
     user_inputs = []
     
     if not os.path.exists(csv_path):
-        print(f"⚠️  CSV file not found: {csv_path}")
+        print(f"[WARNING] CSV file not found: {csv_path}")
         return user_inputs
     
-    print(f"📖 Processing {csv_path}")
+    print(f">>> Processing {csv_path}")
     
     with open(csv_path, mode="r", encoding="utf-8") as f:
         reader = csv.DictReader(f)
@@ -62,18 +62,22 @@ def process_langfuse_data(traces_csv: str, observations_csv: str, output_folder:
     print(">>> Extracting user inputs from Langfuse data...")
     
     # Process traces - look for 'input' column
-    if os.path.exists(traces_csv):
+    if traces_csv and os.path.exists(traces_csv):
         print(f"   Processing traces: {traces_csv}")
         trace_inputs = extract_user_inputs_from_csv(traces_csv, ['input'])
         all_user_inputs.extend(trace_inputs)
         print(f"   Found {len(trace_inputs)} user inputs in traces")
+    else:
+        print("   No traces CSV file to process")
     
     # Process observations - look for 'input' column  
-    if os.path.exists(observations_csv):
+    if observations_csv and os.path.exists(observations_csv):
         print(f"   Processing observations: {observations_csv}")
         obs_inputs = extract_user_inputs_from_csv(observations_csv, ['input'])
         all_user_inputs.extend(obs_inputs)
         print(f"   Found {len(obs_inputs)} user inputs in observations")
+    else:
+        print("   No observations CSV file to process")
     
     # Generate output filename with today's date
     today = datetime.datetime.now().strftime("%m_%d_%y")

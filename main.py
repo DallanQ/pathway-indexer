@@ -104,7 +104,6 @@ def main():
     stats["execution_time"] = f"{hours_str}, {minutes_str}, {seconds_str}"
 
     print("===>Process completed")
-    print(json.dumps(stats, indent=4))
 
     # Langfuse data extraction
     print("\n" + "="*60)
@@ -142,6 +141,11 @@ def main():
     except Exception as e:
         print(f"[ERROR] Error during Langfuse data extraction: {e}")
         print("   Continuing with main pipeline...")
+
+    print("\n" + "="*60)
+    print("*** PIPELINE SUMMARY ***")
+    print("="*60)
+    print(json.dumps(stats, indent=4))
 
     # Write metrics explanation to metrics_explanation.log (overwrite)
     metrics_explanation_path = os.path.join(DATA_PATH, "metrics_explanation.log")

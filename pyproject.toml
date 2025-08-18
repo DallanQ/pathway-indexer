@@ -102,6 +102,10 @@ ignore = [
     "E501",
     # DoNotAssignLambda
     "E731",
+    # fancy apostrophe
+    "RUF001",
+    # fn too complex
+    "C901",
 ]
 
 [tool.ruff.format]

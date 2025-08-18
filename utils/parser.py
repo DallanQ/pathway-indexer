@@ -55,7 +55,7 @@ def clean_markdown(text):
 
     # Remove list of links with same anchors
     text = re.sub(r"(?:(https?:\/\/[^\s]+)\s+){2,}", "", text)  # Remove repeated links
-    
+
     # Replace [link](#) and [link](url) with link text only
     text = re.sub(r"\[([^\]]+)\]\(([^)]+)\)", r"\1", text)
 
@@ -76,12 +76,12 @@ def clean_markdown(text):
     text = re.sub(r"^\| Information \|\n", "", text, flags=re.MULTILINE)
     text = re.sub(r"\*\s*(Home|Knowledge Base - Home|KA-\d+)\s*\n", "", text)
     text = re.sub(
-        r"(You're offline.*?Knowledge Articles|Contoso, Ltd\.|BYU-Pathway Worldwide|Toggle navigation[.\w\s\*\+\-\:]+|Search Filter|Search\n|Knowledge Article Key:)",
+        r"(You’re offline.*?Knowledge Articles|Contoso, Ltd\.|BYU-Pathway Worldwide|Toggle navigation[.\w\s\*\+\-\:]+|Search Filter|Search\n|Knowledge Article Key:)",
         "",
         text,
     )
-    text = re.sub(r"You're offline\. This is a read only version of the page\.", "", text)
-    
+    text = re.sub(r"You’re offline\. This is a read only version of the page\.", "", text)
+
     # Others regular expressions to remove unnecessary text
     # Remove empty headers
     text = re.sub(r"^#+\s*$", "", text, flags=re.MULTILINE)
@@ -91,10 +91,10 @@ def clean_markdown(text):
 
     # Remove text from the hall foundation menu
     # text = re.sub(r"(Skip to content|Menu|[*+-].*)\n", '', text, flags=re.MULTILINE)
-    
+
     # Remove broken links
     text = re.sub(r"\[([^\]]+)\]\.\n\n\((http[^\)]+)\) \(([^)]+)\)\.", r"\1 (\3).", text)
-    
+
     # Remove consecutive blank lines
     text = re.sub(r"\n\s*\n\s*\n", "\n\n", text)
 
@@ -331,7 +331,9 @@ def has_markdown_tables(content):
     return all(re.search(pattern, content, re.MULTILINE) for pattern in table_patterns)
 
 
-def parse_txt_to_md(file_path, file_extension, stats, empty_llamaparse_files_counted, detailed_log_path, title_tag="", url=None): 
+def parse_txt_to_md(
+    file_path, file_extension, stats, empty_llamaparse_files_counted, detailed_log_path, title_tag="", url=None
+):
     """
     Parses a .txt file to a Markdown (.md) file using LlamaParse, with detailed logging.
     """
@@ -374,7 +376,7 @@ def parse_txt_to_md(file_path, file_extension, stats, empty_llamaparse_files_cou
             "filepath": file_path,
             "status": "DIRECT_LOAD",
             "message": "Loaded TXT file directly without LlamaParse.",
-            "url": url  # Include the URL in the log entry
+            "url": url,  # Include the URL in the log entry
         }
         if detailed_log_path:
             with open(detailed_log_path, "a") as f:
@@ -521,7 +523,6 @@ def associate_markdown_with_metadata(markdown_dirs, csv_path, excluded_domains):
         print(f"{path}: {meta}")
 
     return markdown_metadata_mapping
-
 
 
 def remove_existing_yaml_frontmatter(content):
@@ -747,6 +748,7 @@ def process_directory(origin_path, out_folder, stats, empty_llamaparse_files_cou
     Processes all HTML and PDF files in the specified directory.
     """
     import csv
+
     # Load all_links.csv for URL lookup
     all_links_path = os.path.join(os.path.dirname(origin_path), "all_links.csv")
     file_url_map = {}

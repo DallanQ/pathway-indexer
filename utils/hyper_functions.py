@@ -236,9 +236,12 @@ def extract_index_metadata(node):
 
     # Join the remaining parts as content
     # TODO! don't join the last part if its empty - make sure we don't still have unnecessary --- separators
-    content = "---\n".join(parts[2:])
+    content = "---\
+".join(parts[2:])
 
-    return TextNode(metadata=headers, text=content)
+    final_metadata = {**node.metadata, **headers}
+
+    return TextNode(metadata=final_metadata, text=content)
 
 
 def get_headers_and_paragraphs(node: BaseNode) -> list[str]:
@@ -517,7 +520,9 @@ def run_pipeline(documents, splitter, embed_model, vector_store, include_prev_ne
             node.text = node.metadata["context"]
             del node.metadata["context"]
 
-    url = nodes[0].metadata['url']
+    url = None
+    if nodes and 'url' in nodes[0].metadata:
+        url = nodes[0].metadata['url']
     sequence = 1
 
     for node in nodes:
@@ -527,7 +532,7 @@ def run_pipeline(documents, splitter, embed_model, vector_store, include_prev_ne
             print(f"Node without URL: {node.metadata}")
             continue
         
-        if url == node.metadata['url']:
+        if url and url == node.metadata.get('url'):
             node.metadata['sequence'] = sequence
             sequence += 1
         else:

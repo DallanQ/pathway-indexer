@@ -1,5 +1,9 @@
+import json
 import os
+import time
+
 import dotenv
+import pandas as pd
 from pinecone import Pinecone, ServerlessSpec
 from llama_index.core import Document
 from llama_index.core.vector_stores.types import VectorStoreQueryMode
@@ -190,6 +194,15 @@ def main():
     """
     Main function to recreate the vector store and process documents.
     """
+    start_time = time.time()
+    stats = {
+        "average_nodes_per_file": 0,
+        "files_with_zero_nodes": 0,
+        "files_with_one_node": 0,
+        "files_with_more_than_one_node": 0,
+        "node_counts_per_file": {},
+    }
+
     try:
         print("Starting vector store recreation and document processing...")
         
@@ -217,6 +230,175 @@ def main():
         print(f"\n✅ Process completed successfully!")
         print(f"   - Total nodes processed: {len(nodes)}")
         print(f"   - Vector store ready for queries")
+
+        # Track all markdown files loaded for indexing (all .md files in output dirs)
+        md_files_loaded_for_indexing = set()
+        datapath = os.getenv("DATA_PATH")
+        for subdir in ["out/from_html/", "out/from_pdf/"]:
+            dir_path = os.path.join(datapath, subdir)
+            if os.path.exists(dir_path):
+                for fname in os.listdir(dir_path):
+                    if fname.endswith(".md"):
+                        md_files_loaded_for_indexing.add(os.path.join(dir_path, fname))
+
+        # Count nodes for each file
+        for md_file in md_files_loaded_for_indexing:
+            stats["node_counts_per_file"].setdefault(md_file, 0)
+
+        # Create mapping of filepath to URL from node metadata
+        filepath_to_url = {}
+        for node in nodes:
+            filepath = node.metadata.get("filepath")
+            url = node.metadata.get("url")
+            if filepath and url:
+                filepath_to_url[filepath] = url
+
+        # Always try to get full data from all_links.csv using filename for comprehensive mapping
+        filepath_to_full_data = {}
+        try:
+            all_links_path = os.path.join(os.getenv("DATA_PATH"), "all_links.csv")
+            if os.path.exists(all_links_path):
+                all_links_df = pd.read_csv(all_links_path)
+                for _, row in all_links_df.iterrows():
+                    if "filename" in row and pd.notna(row["filename"]):
+                        filename = str(row["filename"]).strip()
+                        # Match by filename hash
+                        for md_file in md_files_loaded_for_indexing:
+                            md_filename = os.path.splitext(os.path.basename(md_file))[0]
+                            if md_filename == filename:
+                                filepath_to_full_data[md_file] = {
+                                    "URL": row.get("URL", "N/A"),
+                                    "Heading": row.get("Heading", "N/A"), 
+                                    "Subheading": row.get("Subheading", "N/A"),
+                                    "Title": row.get("Title", "N/A"),
+                                    "Role": row.get("Role", "N/A"),
+                                    "Filename": row.get("filename", "N/A")
+                                }
+                                # Only update filepath_to_url if not already found from nodes
+                                if md_file not in filepath_to_url:
+                                    filepath_to_url[md_file] = row.get("URL", "URL not found")
+        except Exception as e:
+            print(f"Warning: Could not load URLs from all_links.csv: {e}")
+
+        for node in nodes:
+            filepath = node.metadata.get("filepath")
+            if filepath in stats["node_counts_per_file"]:
+                stats["node_counts_per_file"][filepath] += 1
+
+        # Count nodes for each file and track zero-node files for error reporting
+        zero_node_files_with_full_data = []
+        for _filepath, count in stats["node_counts_per_file"].items():
+            if count == 0:
+                stats["files_with_zero_nodes"] += 1
+                full_data = filepath_to_full_data.get(_filepath)
+                if full_data:
+                    zero_node_files_with_full_data.append({
+                        "Filepath": _filepath,
+                        "URL": full_data["URL"],
+                        "Heading": full_data["Heading"],
+                        "Subheading": full_data["Subheading"], 
+                        "Title": full_data["Title"],
+                        "Role": full_data["Role"],
+                        "Filename": full_data["Filename"]
+                    })
+                else:
+                    zero_node_files_with_full_data.append({
+                        "Filepath": _filepath,
+                        "URL": "URL not found",
+                        "Heading": "N/A",
+                        "Subheading": "N/A",
+                        "Title": "N/A", 
+                        "Role": "N/A",
+                        "Filename": "N/A"
+                    })
+            elif count == 1:
+                stats["files_with_one_node"] += 1
+            else:
+                stats["files_with_more_than_one_node"] += 1
+
+        # Save zero-node files to CSV in error folder if any exist
+        if zero_node_files_with_full_data:
+            data_path = os.getenv("DATA_PATH")
+            error_folder = os.path.join(data_path, "error")
+            os.makedirs(error_folder, exist_ok=True)
+            
+            zero_node_df = pd.DataFrame(zero_node_files_with_full_data)
+            zero_node_csv_path = os.path.join(error_folder, "non_indexable_files_report.csv")
+            zero_node_df.to_csv(zero_node_csv_path, index=False)
+
+        stats["md_files_loaded_for_indexing"] = len(md_files_loaded_for_indexing)
+        end_time = time.time()
+        execution_seconds = end_time - start_time
+        hours, rem = divmod(execution_seconds, 3600)
+        minutes, seconds = divmod(rem, 60)
+        hours_str = f"{int(hours)} hour" if int(hours) == 1 else f"{int(hours)} hours"
+        minutes_str = f"{int(minutes)} minute" if int(minutes) == 1 else f"{int(minutes)} minutes"
+        seconds_str = f"{int(seconds)} second" if int(seconds) == 1 else f"{int(seconds)} seconds"
+        stats["execution_time"] = f"{hours_str}, {minutes_str}, {seconds_str}"
+        # Calculate average nodes per file
+        if len(stats["node_counts_per_file"]) > 0:
+            stats["average_nodes_per_file"] = round(
+                sum(stats["node_counts_per_file"].values()) / len(stats["node_counts_per_file"]),
+                2
+            )
+        else:
+            stats["average_nodes_per_file"] = 0
+
+        # Write node_counts_per_file to a log file
+        node_counts_log_path = os.path.join(os.getenv("DATA_PATH"), "node_counts_log.json")
+        with open(node_counts_log_path, "w") as f:
+            json.dump(stats["node_counts_per_file"], f, indent=4)
+
+        # Collect zero-node files and their URLs
+        zero_node_files = []
+        for _filepath, count in stats["node_counts_per_file"].items():
+            if count == 0:
+                zero_node_files.append(_filepath)
+
+        # Append indexer metrics explanation to metrics_explanation.log
+        metrics_explanation_path = os.path.join(os.getenv("DATA_PATH"), "metrics_explanation.log")
+        indexer_explanation = f"""
+Indexer Metrics
+
+=> Markdown files loaded for indexing: {stats['md_files_loaded_for_indexing']}
+Number of markdown files present and loaded for indexing. This includes all .md files found in the output directories, regardless of node count.
+
+=> Files with indexable content: {len([fp for fp, count in stats['node_counts_per_file'].items() if count > 0])}
+Number of markdown files that produced at least one node (indexable content) and were included in the final indexer metrics.
+
+=> Total nodes processed: {sum(stats['node_counts_per_file'].values())}
+Number of nodes (chunks of content) created and indexed from the markdown files.
+
+=> Average nodes per file: {stats['average_nodes_per_file']}
+Average number of nodes per indexed file.
+
+=> Files with zero nodes: {len(zero_node_files)}
+Number of files that had no indexable content.
+"""
+        # Add section for files with zero nodes (no indexable content)
+        indexer_explanation += "\nFiles without indexable content (zero nodes):\n"
+        indexer_explanation += f"Total: {len(zero_node_files)}\n"
+        for filepath in zero_node_files:
+            url = None
+            for doc in documents:
+                if doc.metadata.get("filepath") == filepath:
+                    url = doc.metadata.get("url")
+                    break
+            indexer_explanation += f"    - Filepath: {filepath}, URL: {url}\n"
+        indexer_explanation += "\n"
+        
+        # Continue with rest of metrics
+        indexer_explanation += f"=> Files with one node: {stats['files_with_one_node']}\nNumber of files that produced only one node.\n\n=> Files with more than one node: {stats['files_with_more_than_one_node']}\nNumber of files that produced more than one node.\n\n=> Node counts per file saved to: node_counts_log.json\nNode counts per file are logged for analysis.\n\n=> execution_time: {stats['execution_time']}\nTime taken for the indexing process.\n"
+        
+        with open(metrics_explanation_path, "a") as f:
+            f.write(indexer_explanation)
+            
+        # Print path relative to repo root, starting from DATA_PATH
+        rel_path = os.path.relpath(metrics_explanation_path, start=os.getcwd())
+        print(f"\nWhat do these numbers mean? See ./{rel_path}")
+        
+        # Delete node_counts_per_file after metrics explanation
+        del stats["node_counts_per_file"]
         
         return index, retriever, nodes
         

@@ -71,7 +71,7 @@ def analyze_file_changes(output_data_path, last_output_data_path, out_folder, la
     current_df = pd.read_csv(output_data_path)
 
     # Separate HTML and PDF files
-    html_df = current_df[current_df["Content Type"] == "html"]
+    html_df = current_df[current_df["Content Type"] == "html"].copy()
     pdf_df = current_df[current_df["Content Type"] == "pdf"]
 
     if not os.path.exists(last_output_data_path):
@@ -92,13 +92,13 @@ def analyze_file_changes(output_data_path, last_output_data_path, out_folder, la
         last_hash = last_hash_dict.get(row["URL"])
         return row["Content Hash"] != last_hash
 
-    html_df.loc[:, "HasChanged"] = html_df.apply(has_changes, axis=1)
+    html_df["HasChanged"] = html_df.apply(has_changes, axis=1)
     changed_html_files = html_df[html_df["HasChanged"]]
     unchanged_html_files = html_df[~html_df["HasChanged"]]
 
     # Copy unchanged HTML files and remove them from input directory
-    # Only do this if we have a valid previous crawl folder
-    if last_data_json["last_folder_crawl"] != "Never":
+    # Only do this if we have a valid previous crawl folder and it's different from current folder
+    if last_data_json["last_folder_crawl"] != "Never" and last_data_json["last_folder_crawl"] != out_folder:
         for _, row in unchanged_html_files.iterrows():
             print("Skipping unchanged file:", row["Filepath"])
             pathname = os.path.basename(row["Filepath"]).replace(".html", ".md")
@@ -116,9 +116,9 @@ def analyze_file_changes(output_data_path, last_output_data_path, out_folder, la
                 os.remove(row["Filepath"])
                 print(f"Removed {row['Filepath']} from input_directory")
     else:
-        # If no previous crawl, just remove the unchanged files from input directory
+        # If no previous crawl or same folder, just remove the unchanged files from input directory
         for _, row in unchanged_html_files.iterrows():
-            print("Skipping unchanged file (no previous crawl to copy from):", row["Filepath"])
+            print("Skipping unchanged file (no copy needed):", row["Filepath"])
             # Remove unchanged file from input_directory
             if os.path.exists(row["Filepath"]):
                 os.remove(row["Filepath"])

@@ -41,32 +41,29 @@ def get_langfuse_client() -> Langfuse:
 
 def get_time_range(days: int = 30) -> tuple:
     """
-    Generate ISO timestamp range for the past N days.
+    Generate datetime range for the past N days.
 
     Args:
         days: Number of days to look back (default: 30)
 
     Returns:
-        tuple: (from_timestamp, to_timestamp) in ISO format
+        tuple: (from_timestamp, to_timestamp) as datetime objects
     """
     to_ts = datetime.datetime.utcnow()
     from_ts = to_ts - datetime.timedelta(days=days)
 
-    from_iso = from_ts.isoformat() + "Z"
-    to_iso = to_ts.isoformat() + "Z"
-
     print(f"📅 Fetching data from {from_ts.strftime('%Y-%m-%d')} to {to_ts.strftime('%Y-%m-%d')}")
-    return from_iso, to_iso
+    return from_ts, to_ts
 
 
-def fetch_traces(langfuse_client: Langfuse, from_ts: str, to_ts: str) -> List[Dict[str, Any]]:
+def fetch_traces(langfuse_client: Langfuse, from_ts: datetime.datetime, to_ts: datetime.datetime) -> List[Dict[str, Any]]:
     """
     Fetch all traces within the specified time range.
 
     Args:
         langfuse_client: Authenticated Langfuse client
-        from_ts: Start timestamp in ISO format
-        to_ts: End timestamp in ISO format
+        from_ts: Start timestamp as datetime object
+        to_ts: End timestamp as datetime object
 
     Returns:
         List[Dict]: List of trace data
@@ -80,7 +77,12 @@ def fetch_traces(langfuse_client: Langfuse, from_ts: str, to_ts: str) -> List[Di
     while True:
         try:
             print(f"   Fetching page {page} (limit: {limit})")
-            traces_page = langfuse_client.get_traces(from_timestamp=from_ts, to_timestamp=to_ts, limit=limit, page=page)
+            traces_page = langfuse_client.api.trace.list(
+                from_timestamp=from_ts, 
+                to_timestamp=to_ts, 
+                limit=limit, 
+                page=page
+            )
 
             if not traces_page.data:
                 break
@@ -126,7 +128,7 @@ def fetch_observations_for_traces(langfuse_client: Langfuse, traces: List[Dict[s
             if i % 10 == 0:  # Progress indicator every 10 traces
                 print(f"   Processing trace {i}/{len(traces)}")
 
-            observations = langfuse_client.get_observations(trace_id=trace_id, limit=50)
+            observations = langfuse_client.api.observations.get_many(trace_id=trace_id, limit=50)
 
             for obs in observations.data:
                 obs_data = obs.__dict__

@@ -13,6 +13,8 @@ from pathway_indexer.memory import (
 )
 from pathway_indexer.parser import parse_files_to_md
 from utils.log_analyzer import analyze_logs
+from utils.langfuse_downloader import download_langfuse_data
+from utils.langfuse_processor import process_langfuse_data
 
 
 def inspect_md_files(stats):
@@ -102,7 +104,49 @@ def main():
     stats["execution_time"] = f"{hours_str}, {minutes_str}, {seconds_str}"
 
     print("===>Process completed")
+
+    # Langfuse data extraction
+    print("\n" + "="*60)
+    print("*** LANGFUSE DATA EXTRACTION ***")
+    print("="*60)
+    
+    try:
+        langfuse_folder = os.path.join(DATA_PATH, "langfuse")
+        
+        print(">>> Starting Langfuse data download (past 30 days)...")
+        traces_csv, observations_csv = download_langfuse_data(langfuse_folder, days=30)
+        
+        print(">>> Processing Langfuse data to extract user inputs...")
+        user_inputs_file = process_langfuse_data(traces_csv, observations_csv, langfuse_folder)
+        
+        print("\n[SUCCESS] Langfuse data extraction completed!")
+        print(f"   >> Langfuse folder: {os.path.relpath(langfuse_folder, start=os.getcwd())}")
+        
+        if traces_csv:
+            print(f"   >> Raw traces: {os.path.basename(traces_csv)}")
+        else:
+            print(f"   >> Raw traces: No traces file created")
+            
+        if observations_csv:
+            print(f"   >> Raw observations: {os.path.basename(observations_csv)}")
+        else:
+            print(f"   >> Raw observations: No observations file created")
+            
+        print(f"   >> Extracted user inputs: {os.path.basename(user_inputs_file)}")
+        
+    except ImportError:
+        print("[WARNING] Langfuse package not installed. Skipping Langfuse data extraction.")
+        print("   To enable this feature, install: pip install langfuse")
+        
+    except Exception as e:
+        print(f"[ERROR] Error during Langfuse data extraction: {e}")
+        print("   Continuing with main pipeline...")
+
+    print("\n" + "="*60)
+    print("*** PIPELINE SUMMARY ***")
+    print("="*60)
     print(json.dumps(stats, indent=4))
+
     # Write metrics explanation to metrics_explanation.log (overwrite)
     metrics_explanation_path = os.path.join(DATA_PATH, "metrics_explanation.log")
     metrics_explanation = f"""

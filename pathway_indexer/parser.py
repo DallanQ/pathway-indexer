@@ -71,7 +71,7 @@ def analyze_file_changes(output_data_path, last_output_data_path, out_folder, la
     current_df = pd.read_csv(output_data_path)
 
     # Separate HTML and PDF files
-    html_df = current_df[current_df["Content Type"] == "html"].copy()
+    html_df = current_df[current_df["Content Type"] == "html"]
     pdf_df = current_df[current_df["Content Type"] == "pdf"]
 
     if not os.path.exists(last_output_data_path):
@@ -97,53 +97,22 @@ def analyze_file_changes(output_data_path, last_output_data_path, out_folder, la
     unchanged_html_files = html_df[~html_df["HasChanged"]]
 
     # Copy unchanged HTML files and remove them from input directory
-    # Only do this if we have a valid previous crawl folder and it's different from current folder
-    last_folder_normalized = os.path.normpath(last_data_json["last_folder_crawl"]) if last_data_json["last_folder_crawl"] != "Never" else "Never"
-    out_folder_parent = os.path.normpath(os.path.dirname(out_folder))
-    
-    print(f"DEBUG: last_folder_normalized = '{last_folder_normalized}'")
-    print(f"DEBUG: out_folder_parent = '{out_folder_parent}'")
-    print(f"DEBUG: out_folder = '{out_folder}'")
-    
-    if (last_data_json["last_folder_crawl"] != "Never" and 
-        last_folder_normalized != out_folder_parent):
-        print("DEBUG: Entering copy logic because folders are different")
-        for _, row in unchanged_html_files.iterrows():
-            print("Skipping unchanged file:", row["Filepath"])
-            pathname = os.path.basename(row["Filepath"]).replace(".html", ".md")
-            src_path = os.path.join(last_data_json["last_folder_crawl"], "out", "from_html", pathname)
-            dst_path = os.path.join(out_folder, "from_html", pathname)
-            print(f"DEBUG: src_path = '{src_path}', dst_path = '{dst_path}'")
+    for _, row in unchanged_html_files.iterrows():
+        print("Skipping unchanged file:", row["Filepath"])
+        pathname = os.path.basename(row["Filepath"]).replace(".html", ".md")
+        src_path = os.path.join(last_data_json["last_folder_crawl"], "out", "from_html", pathname)
+        dst_path = os.path.join(out_folder, "from_html", pathname)
 
-            # Double check that src and dst are not the same
-            if os.path.normpath(src_path) == os.path.normpath(dst_path):
-                print(f"WARNING: Skipping copy because src and dst are identical: {src_path}")
-                continue
+        os.makedirs(os.path.dirname(dst_path), exist_ok=True)
+        # Copy unchanged file as .md in out_folder
+        if os.path.exists(src_path):
+            shutil.copyfile(src_path, dst_path)
+            print(f"Copied {src_path} to {dst_path}")
 
-            os.makedirs(os.path.dirname(dst_path), exist_ok=True)
-            # Copy unchanged file as .md in out_folder
-            if os.path.exists(src_path):
-                try:
-                    shutil.copyfile(src_path, dst_path)
-                    print(f"Copied {src_path} to {dst_path}")
-                except shutil.SameFileError:
-                    print(f"Skipping copy - source and destination are the same file: {src_path}")
-                except Exception as e:
-                    print(f"Error copying {src_path} to {dst_path}: {e}")
-
-            # Remove unchanged file from input_directory
-            if os.path.exists(row["Filepath"]):
-                os.remove(row["Filepath"])
-                print(f"Removed {row['Filepath']} from input_directory")
-    else:
-        print("DEBUG: Skipping copy logic - either no previous crawl or same folder as current")
-        # If no previous crawl or same folder, just remove the unchanged files from input directory
-        for _, row in unchanged_html_files.iterrows():
-            print("Skipping unchanged file (no copy needed):", row["Filepath"])
-            # Remove unchanged file from input_directory
-            if os.path.exists(row["Filepath"]):
-                os.remove(row["Filepath"])
-                print(f"Removed {row['Filepath']} from input_directory")
+        # Remove unchanged file from input_directory
+        if os.path.exists(row["Filepath"]):
+            os.remove(row["Filepath"])
+            print(f"Removed {row['Filepath']} from input_directory")
 
     # Combine changed HTML files with all PDF files for processing
     files_to_process = pd.concat([changed_html_files, pdf_df], ignore_index=True)

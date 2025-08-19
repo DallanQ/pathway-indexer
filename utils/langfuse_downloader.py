@@ -14,8 +14,8 @@ from typing import Any, Dict, List
 try:
     from langfuse import Langfuse
 except ImportError:
-    print("Warning: langfuse package not installed. Run: pip install langfuse")
-    raise ImportError("langfuse package not installed. Run: pip install langfuse")
+    print("Warning: langfuse package not installed. Run: poetry add langfuse")
+    raise ImportError("langfuse package not installed. Run: poetry add langfuse")
 
 
 def get_langfuse_client() -> Langfuse:

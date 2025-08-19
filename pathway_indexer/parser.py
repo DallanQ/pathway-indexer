@@ -71,7 +71,7 @@ def analyze_file_changes(output_data_path, last_output_data_path, out_folder, la
     current_df = pd.read_csv(output_data_path)
 
     # Separate HTML and PDF files
-    html_df = current_df[current_df["Content Type"] == "html"].copy()
+    html_df = current_df[current_df["Content Type"] == "html"]
     pdf_df = current_df[current_df["Content Type"] == "pdf"]
 
     if not os.path.exists(last_output_data_path):

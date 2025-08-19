@@ -38,8 +38,6 @@ def extract_user_inputs_from_csv(csv_path: str, input_columns: List[str] = None)
         
         for row in reader:
             for column in input_columns:
-                input_text = row.get(column, "").strip()
-                if input_text:
                 value = row.get(column, "")
                 if value is not None:
                     input_text = str(value).strip()

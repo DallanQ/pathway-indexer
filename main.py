@@ -15,6 +15,7 @@ from pathway_indexer.parser import parse_files_to_md
 from utils.log_analyzer import analyze_logs
 
 
+
 def inspect_md_files(stats):
     # Reset counter for files with only metadata
     stats["files_with_only_metadata"] = 0
@@ -102,7 +103,14 @@ def main():
     stats["execution_time"] = f"{hours_str}, {minutes_str}, {seconds_str}"
 
     print("===>Process completed")
+
+    
+
+    print("\n" + "="*60)
+    print("*** PIPELINE SUMMARY ***")
+    print("="*60)
     print(json.dumps(stats, indent=4))
+
     # Write metrics explanation to metrics_explanation.log (overwrite)
     metrics_explanation_path = os.path.join(DATA_PATH, "metrics_explanation.log")
     metrics_explanation = f"""

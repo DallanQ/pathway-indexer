@@ -92,5 +92,20 @@ poetry run python main.py
 ```bash
 poetry run python store.py
 ```
-
 ---
+
+### Running the Langfuse Data Extraction
+
+The Langfuse data extraction is run as a standalone script. This script will download and process data from Langfuse to extract user questions.
+
+To run the script, use the following command:
+
+```bash
+poetry run python extract_questions.py
+```
+
+By default, the script will process data from the last 7 days. You can change this by using the `--days` argument:
+
+```bash
+poetry run python extract_questions.py --days 14
+``` 

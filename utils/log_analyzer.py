@@ -113,8 +113,10 @@ URL removal during the merging process, which is normal and expected.*
         
         if missing_urls:
             missing_urls_df = pd.DataFrame({"URL": list(missing_urls)})
-            missing_urls_csv_path = os.path.join(error_folder, "filtered_sharepoint_links.csv")
-            missing_urls_df.to_csv(missing_urls_csv_path, index=False)
+            error_csv_path = os.path.join(error_folder, "error.csv")
+            with open(error_csv_path, "a") as f:
+                f.write("Filtered SharePoint Links\n")
+            missing_urls_df.to_csv(error_csv_path, mode="a", index=False, header=True)
 
         output_lines.append(f"Total URLs in all_links.csv:           {len(all_links_urls)}\n")
         output_lines.append(f"Total URLs processed by crawler:       {len(log_urls_set)}\n")

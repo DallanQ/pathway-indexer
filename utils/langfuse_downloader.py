@@ -162,24 +162,21 @@ def save_to_csv(data: List[Dict[str, Any]], output_path: str) -> bool:
         print("[WARNING] No data to save")
         return False
 
-    # Get all unique keys from all dictionaries
-    all_keys = set()
-    for item in data:
-        all_keys.update(item.keys())
-
-    all_keys = sorted(list(all_keys))
+    # Fixed column order to match Langfuse UI export
+    ui_export_columns = [
+        "id","projectId","timestamp","tags","bookmarked","name","release","version","userId","environment","sessionId","public","input","output","metadata","latency","usage","inputCost","outputCost","totalCost","level","errorCount","warningCount","defaultCount","debugCount","observationCount","inputTokens","outputTokens","totalTokens","user_feedback"
+    ]
 
     print(f">>> Saving {len(data)} records to {output_path}")
 
     try:
         with open(output_path, "w", newline="", encoding="utf-8") as csvfile:
-            writer = csv.DictWriter(csvfile, fieldnames=all_keys)
+            writer = csv.DictWriter(csvfile, fieldnames=ui_export_columns)
             writer.writeheader()
 
             for item in data:
-                # Convert complex objects to JSON strings
                 row = {}
-                for key in all_keys:
+                for key in ui_export_columns:
                     value = item.get(key, "")
                     if isinstance(value, (dict, list)):
                         row[key] = json.dumps(value, default=str)

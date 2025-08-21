@@ -240,7 +240,7 @@ def add_user_feedback_to_traces(traces: List[Dict[str, Any]], scores: List[Dict[
     return traces
 
 
-def save_to_csv(data: List[Dict[str, Any]], filename: str) -> bool:
+def save_to_csv(data: List[Dict[str, Any]], output_path: str) -> bool:
     """
     Save data to CSV file with proper encoding and error handling.
 
@@ -262,10 +262,10 @@ def save_to_csv(data: List[Dict[str, Any]], filename: str) -> bool:
 
     all_keys = sorted(list(all_keys))
 
-    print(f">>> Saving {len(data)} records to {filename}")
+    print(f">>> Saving {len(data)} records to {output_path}")
 
     try:
-        with open(filename, "w", newline="", encoding="utf-8") as csvfile:
+        with open(output_path, "w", newline="", encoding="utf-8") as csvfile:
             writer = csv.DictWriter(csvfile, fieldnames=all_keys)
             writer.writeheader()
 
@@ -280,7 +280,7 @@ def save_to_csv(data: List[Dict[str, Any]], filename: str) -> bool:
                         row[key] = str(value) if value is not None else ""
                 writer.writerow(row)
 
-        print(f"[SUCCESS] Successfully saved data to {filename}")
+        print(f"[SUCCESS] Successfully saved data to {output_path}")
         return True
 
     except Exception as e:

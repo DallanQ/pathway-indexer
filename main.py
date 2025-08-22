@@ -60,6 +60,7 @@ def main():
     output_data_path = "data/last_output_data.csv"
 
     detailed_log_path = os.path.join(DATA_PATH, "pipeline_detailed_log.jsonl")
+    error_csv_path = os.path.join(DATA_PATH, "error", "error.csv")
 
     # Ensure the parent directory for the detailed log file exists
     os.makedirs(os.path.dirname(detailed_log_path), exist_ok=True)
@@ -67,6 +68,10 @@ def main():
     with open(detailed_log_path, "w") as f:
         f.write("")  # Clear content from previous runs
     print(f"Detailed pipeline log will be saved to: {os.path.relpath(detailed_log_path, start=os.getcwd())}")
+
+    # Delete error.csv if it exists
+    if os.path.exists(error_csv_path):
+        os.remove(error_csv_path)
 
     print("Initializing JSON file...")
     last_data_json = initialize_json_file(detail_json_path, output_data_path)

@@ -323,8 +323,10 @@ def main():
             os.makedirs(error_folder, exist_ok=True)
             
             zero_node_df = pd.DataFrame(zero_node_files_with_full_data)
-            zero_node_csv_path = os.path.join(error_folder, "non_indexable_files_report.csv")
-            zero_node_df.to_csv(zero_node_csv_path, index=False)
+            error_csv_path = os.path.join(error_folder, "error.csv")
+            with open(error_csv_path, "a") as f:
+                f.write("Non-Indexable Files Report\n")
+            zero_node_df.to_csv(error_csv_path, mode="a", index=False, header=True)
 
         stats["md_files_loaded_for_indexing"] = len(md_files_loaded_for_indexing)
         end_time = time.time()

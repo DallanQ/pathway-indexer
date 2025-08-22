@@ -386,8 +386,10 @@ async def crawl_csv(df, base_dir, output_file="output_data.csv", detailed_log_pa
     os.makedirs(error_folder, exist_ok=True)
     
     # Save error file with new name in error folder
-    failed_http_error_csv_path = os.path.join(error_folder, "failed_http_error.csv")
-    error_df.to_csv(failed_http_error_csv_path, index=False)
+    error_csv_path = os.path.join(error_folder, "error.csv")
+    with open(error_csv_path, "a") as f:
+        f.write("Failed HTTP Errors\n")
+    error_df.to_csv(error_csv_path, mode="a", index=False, header=True)
 
     out_path = os.path.join(base_dir, output_file)
 

@@ -104,6 +104,50 @@ def fetch_traces(langfuse_client: Langfuse, from_ts: datetime.datetime, to_ts: d
     return all_traces
 
 
+def fetch_scores(langfuse_client: Langfuse) -> List[Dict[str, Any]]:
+    """
+    Fetch all scores (including user feedback) from Langfuse.
+
+    Args:
+        langfuse_client: Authenticated Langfuse client
+
+    Returns:
+        List[Dict]: List of score data
+    """
+    all_scores = []
+    page = 1
+    limit = 100
+
+    print(">>> Downloading scores from Langfuse...")
+
+    while True:
+        try:
+            print(f"   Fetching scores page {page} (limit: {limit})")
+            scores_page = langfuse_client.api.score_v_2.get(
+                limit=limit, 
+                page=page
+            )
+
+            if not scores_page.data:
+                break
+
+            all_scores.extend([score.__dict__ for score in scores_page.data])
+            print(f"   Retrieved {len(scores_page.data)} scores (total: {len(all_scores)})")
+
+            # Check if we've reached the end
+            if len(scores_page.data) < limit:
+                break
+
+            page += 1
+
+        except Exception as e:
+            print(f"[ERROR] Error fetching scores on page {page}: {e}")
+            break
+
+    print(f">>> Downloaded {len(all_scores)} total scores")
+    return all_scores
+
+
 def fetch_observations_for_traces(langfuse_client: Langfuse, traces: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     """
     Fetch all observations (generations, spans) for the given traces.
@@ -145,6 +189,55 @@ def fetch_observations_for_traces(langfuse_client: Langfuse, traces: List[Dict[s
 
     print(f"[SUCCESS] Successfully downloaded {len(all_observations)} observations")
     return all_observations
+
+
+def add_user_feedback_to_traces(traces: List[Dict[str, Any]], scores: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    """
+    Add user_feedback column to traces by merging score data.
+
+    Args:
+        traces: List of trace dictionaries
+        scores: List of score dictionaries
+
+    Returns:
+        List[Dict]: Traces with user_feedback column added
+    """
+    print(">>> Adding user feedback to traces...")
+    
+    # Create a mapping from trace_id to user feedback scores
+    feedback_map = {}
+    for score in scores:
+        if score.get('name') == 'user_feedback' and score.get('trace_id'):
+            trace_id = score['trace_id']
+            feedback_value = score.get('string_value', '')
+            comment = score.get('comment', '')
+            
+            # Combine feedback value and comment if both exist
+            if feedback_value and comment:
+                feedback_text = f"{feedback_value}: {comment}"
+            elif feedback_value:
+                feedback_text = feedback_value
+            elif comment:
+                feedback_text = comment
+            else:
+                feedback_text = ""
+            
+            # If multiple feedback scores exist for same trace, concatenate them
+            if trace_id in feedback_map:
+                feedback_map[trace_id] += f" | {feedback_text}"
+            else:
+                feedback_map[trace_id] = feedback_text
+
+    # Add user_feedback column to each trace
+    feedback_added = 0
+    for trace in traces:
+        trace_id = trace.get('id', '')
+        trace['user_feedback'] = feedback_map.get(trace_id, '')
+        if feedback_map.get(trace_id):
+            feedback_added += 1
+
+    print(f"   Added user feedback to {feedback_added}/{len(traces)} traces")
+    return traces
 
 
 def save_to_csv(data: List[Dict[str, Any]], output_path: str) -> bool:
@@ -223,6 +316,12 @@ def download_langfuse_data(output_folder: str, days: int = 30) -> tuple:
 
         # Fetch traces
         traces = fetch_traces(langfuse_client, from_ts, to_ts)
+
+        # Fetch scores (including user feedback)
+        scores = fetch_scores(langfuse_client)
+
+        # Add user feedback to traces
+        traces = add_user_feedback_to_traces(traces, scores)
 
         # Fetch observations
         observations = fetch_observations_for_traces(langfuse_client, traces)

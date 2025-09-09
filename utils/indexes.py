@@ -156,68 +156,59 @@ def get_handbook_data(soup, selector):
 
 async def get_help_links(url, selector):
     """Get the links from the help page."""
+    from urllib.parse import urljoin
     playwright = await async_playwright().start()
     browser = await playwright.chromium.launch()
     page = await browser.new_page()
 
     try:
-        await page.goto(url)
+        await page.goto(url, timeout=60000)
         await page.wait_for_load_state()
 
-        time.sleep(2)
-        # Get the element with the specified selector
-        desktop_articles = await page.query_selector("#desktopArticles")
-
-        if not desktop_articles:
-            raise ValueError(f"No element found for selector: {selector}")
-
-        # Get all the <a> tags inside the selected element
-        links = await desktop_articles.query_selector_all("a")
-
-        if not links:
-            raise ValueError("No links found inside the selected element.")
+        time.sleep(5) # wait for the articles to load
 
         # Click "Show More..." until all articles are loaded
         while True:
             try:
-                print("Doing Click...")
-                await page.click(
-                    "#desktopArticles button.show-more-button", timeout=3000
-                )
-                time.sleep(2)
-                # si no aumentó el número de artículos, salir del loop
-                new_links_count = await desktop_articles.query_selector_all(
-                    "a"
-                ) or await desktop_articles.query_selector_all("a")
-                if len(links) == len(new_links_count):
+                # Check if the button is visible and enabled before clicking
+                button = await page.query_selector("#seeMoreButton:not(.hidden)")
+                if button:
+                    print("Doing Click...")
+                    await button.click(timeout=5000)
+                    time.sleep(2)
+                else:
+                    print("'Show More...' button is not visible or enabled.")
                     break
-                links = new_links_count
             except Exception as e:
                 print(f"Stopped clicking 'Show More...': {e}")
                 break
+        
+        articles_container = await page.query_selector(selector)
+        if not articles_container:
+            raise ValueError(f"No element found for selector: {selector}")
 
+        links = await articles_container.query_selector_all("a")
         if not links:
             raise ValueError("No links found inside the selected element.")
 
         data = []
         for link in links:
-            # Get the title (first <p> tag)
-            title = await link.query_selector("p.title")
-            # Get the description (second <p> tag)
-            description = await link.query_selector("p:not(.title)")
-
-            # Validate that title and description exist
-            if not title or not description:
-                print("Skipping a link with missing title or description.")
+            title_element = await link.query_selector("h5")
+            if not title_element:
+                print("Skipping a link with missing title.")
                 continue
+            
+            title = await title_element.inner_text()
+            href = await link.get_attribute("href")
 
-            # Append the data
+            full_url = urljoin(url, href)
+
             data.append(
                 [
-                    await title.inner_text(),
-                    await description.inner_text(),
-                    await title.inner_text(),
-                    url + (await link.get_attribute("href")),
+                    title,
+                    "", # No subsection
+                    title,
+                    full_url,
                 ]
             )
 

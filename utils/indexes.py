@@ -1,6 +1,7 @@
 import re
 import os
-from typing import Any, cast
+import json
+from typing import Any, cast, Dict, List, Optional
 import requests
 from bs4 import BeautifulSoup, Tag
 from playwright.async_api import async_playwright
@@ -154,77 +155,99 @@ def get_handbook_data(soup, selector):
     return data
 
 
-async def get_help_links(url, selector):
-    """Get the links from the help page."""
-    playwright = await async_playwright().start()
-    browser = await playwright.chromium.launch()
-    page = await browser.new_page()
+def _clean_json_text(raw_text: str) -> str:
+    """
+    Remove problematic control characters from raw JSON text
+    that could cause json.loads() to fail.
+    """
+    return re.sub(r'[\x00-\x1f\x7f]', '', raw_text)
+
+
+def _fetch_help_page(page: int, base_url: str, lang: str = "en", timeout: int = 15) -> Optional[Dict[str, Any]]:
+    """
+    Fetch a single page of results from the BYU-Pathway Help Center API.
+    
+    Args:
+        page (int): Page number to fetch.
+        base_url (str): The base API URL.
+        lang (str): Language code for the request.
+        timeout (int): Request timeout in seconds.
+
+    Returns:
+        dict: Parsed JSON response if successful, else None.
+    """
+    api_url = f"{base_url.rstrip('/')}/en-US/knowledgebase/fetch-articles/"
+    headers = {"User-Agent": "Mozilla/5.0 (compatible; ArticleIndexer/1.0)"}
+    params = {"page": page, "lang": lang}
+    
+    try:
+        resp = requests.get(api_url, headers=headers, params=params, timeout=timeout)
+        resp.raise_for_status()
+    except requests.RequestException as e:
+        print(f"Network error fetching help page {page}: {e}")
+        return None
+
+    raw = resp.text
+    cleaned = _clean_json_text(raw)
 
     try:
-        await page.goto(url)
-        await page.wait_for_load_state()
+        return json.loads(cleaned)
+    except json.JSONDecodeError as e:
+        print(f"JSON parse error on help page {page}: {e}")
+        return None
 
-        time.sleep(2)
-        # Get the element with the specified selector
-        desktop_articles = await page.query_selector("#desktopArticles")
 
-        if not desktop_articles:
-            raise ValueError(f"No element found for selector: {selector}")
+def _build_help_article_url(article_id: str, base_url: str, lang: str = "en") -> str:
+    """Construct the full article URL from its articleId."""
+    return f"{base_url.rstrip('/')}/en-US/knowledgebase/article/?kb={article_id}&lang={lang}"
 
-        # Get all the <a> tags inside the selected element
-        links = await desktop_articles.query_selector_all("a")
 
-        if not links:
-            raise ValueError("No links found inside the selected element.")
+async def get_help_links(url, selector):
+    """
+    Get the links from the help page using the API endpoint.
+    
+    Args:
+        url (str): The base help URL (not used directly, but kept for compatibility).
+        selector (str): CSS selector (not used with API, but kept for compatibility).
+    
+    Returns:
+        list: List of article data in format [section, subsection, title, url].
+    """
+    # Extract base URL for API calls
+    base_url = "https://help.byupathway.edu"
+    if url and url.startswith("http"):
+        # Use the provided URL's domain if different
+        from urllib.parse import urlparse
+        parsed = urlparse(url)
+        base_url = f"{parsed.scheme}://{parsed.netloc}"
+    
+    data = []
+    page = 1
 
-        # Click "Show More..." until all articles are loaded
-        while True:
-            try:
-                print("Doing Click...")
-                await page.click(
-                    "#desktopArticles button.show-more-button", timeout=3000
-                )
-                time.sleep(2)
-                # si no aumentó el número de artículos, salir del loop
-                new_links_count = await desktop_articles.query_selector_all(
-                    "a"
-                ) or await desktop_articles.query_selector_all("a")
-                if len(links) == len(new_links_count):
-                    break
-                links = new_links_count
-            except Exception as e:
-                print(f"Stopped clicking 'Show More...': {e}")
-                break
+    while True:
+        page_data = _fetch_help_page(page, base_url)
+        if not page_data:
+            print(f"Stopping help articles fetch at page {page} due to error.")
+            break
 
-        if not links:
-            raise ValueError("No links found inside the selected element.")
+        results = page_data.get("results", [])
+        for item in results:
+            article_id = item.get("articleId")
+            title = item.get("title", "")
+            
+            if article_id and title:
+                article_url = _build_help_article_url(article_id, base_url)
+                # Format: [section, subsection, title, url]
+                # Using "Help Articles" as section and empty subsection for consistency
+                data.append(["Help Articles", "", clean(title), article_url])
 
-        data = []
-        for link in links:
-            # Get the title (first <p> tag)
-            title = await link.query_selector("p.title")
-            # Get the description (second <p> tag)
-            description = await link.query_selector("p:not(.title)")
+        # Check if there are more records to fetch
+        if not page_data.get("morerecords", False):
+            break
 
-            # Validate that title and description exist
-            if not title or not description:
-                print("Skipping a link with missing title or description.")
-                continue
+        page += 1
 
-            # Append the data
-            data.append(
-                [
-                    await title.inner_text(),
-                    await description.inner_text(),
-                    await title.inner_text(),
-                    url + (await link.get_attribute("href")),
-                ]
-            )
-
-        return data
-    finally:
-        await browser.close()
-        await playwright.stop()
+    return data
 
 
 async def get_services_links(url):

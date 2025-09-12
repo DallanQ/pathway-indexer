@@ -1,6 +1,7 @@
 import re
 import os
-from typing import Any, cast
+import json
+from typing import Any, cast, Dict, List, Optional
 import requests
 from bs4 import BeautifulSoup, Tag
 from playwright.async_api import async_playwright
@@ -154,68 +155,99 @@ def get_handbook_data(soup, selector):
     return data
 
 
-async def get_help_links(url, selector):
-    """Get the links from the help page."""
-    from urllib.parse import urljoin
-    playwright = await async_playwright().start()
-    browser = await playwright.chromium.launch()
-    page = await browser.new_page()
+def _clean_json_text(raw_text: str) -> str:
+    """
+    Remove problematic control characters from raw JSON text
+    that could cause json.loads() to fail.
+    """
+    return re.sub(r'[\x00-\x1f\x7f]', '', raw_text)
+
+
+def _fetch_help_page(page: int, base_url: str, lang: str = "en", timeout: int = 15) -> Optional[Dict[str, Any]]:
+    """
+    Fetch a single page of results from the BYU-Pathway Help Center API.
+    
+    Args:
+        page (int): Page number to fetch.
+        base_url (str): The base API URL.
+        lang (str): Language code for the request.
+        timeout (int): Request timeout in seconds.
+
+    Returns:
+        dict: Parsed JSON response if successful, else None.
+    """
+    api_url = f"{base_url.rstrip('/')}/en-US/knowledgebase/fetch-articles/"
+    headers = {"User-Agent": "Mozilla/5.0 (compatible; ArticleIndexer/1.0)"}
+    params = {"page": page, "lang": lang}
+    
+    try:
+        resp = requests.get(api_url, headers=headers, params=params, timeout=timeout)
+        resp.raise_for_status()
+    except requests.RequestException as e:
+        print(f"Network error fetching help page {page}: {e}")
+        return None
+
+    raw = resp.text
+    cleaned = _clean_json_text(raw)
 
     try:
-        await page.goto(url, timeout=60000)
-        await page.wait_for_load_state()
+        return json.loads(cleaned)
+    except json.JSONDecodeError as e:
+        print(f"JSON parse error on help page {page}: {e}")
+        return None
 
-        time.sleep(5) # wait for the articles to load
 
-        # Click "Show More..." until all articles are loaded
-        while True:
-            try:
-                # Check if the button is visible and enabled before clicking
-                button = await page.query_selector("#seeMoreButton:not(.hidden)")
-                if button:
-                    print("Doing Click...")
-                    await button.click(timeout=5000)
-                    time.sleep(2)
-                else:
-                    print("'Show More...' button is not visible or enabled.")
-                    break
-            except Exception as e:
-                print(f"Stopped clicking 'Show More...': {e}")
-                break
-        
-        articles_container = await page.query_selector(selector)
-        if not articles_container:
-            raise ValueError(f"No element found for selector: {selector}")
+def _build_help_article_url(article_id: str, base_url: str, lang: str = "en") -> str:
+    """Construct the full article URL from its articleId."""
+    return f"{base_url.rstrip('/')}/en-US/knowledgebase/article/?kb={article_id}&lang={lang}"
 
-        links = await articles_container.query_selector_all("a")
-        if not links:
-            raise ValueError("No links found inside the selected element.")
 
-        data = []
-        for link in links:
-            title_element = await link.query_selector("h5")
-            if not title_element:
-                print("Skipping a link with missing title.")
-                continue
+async def get_help_links(url, selector):
+    """
+    Get the links from the help page using the API endpoint.
+    
+    Args:
+        url (str): The base help URL (not used directly, but kept for compatibility).
+        selector (str): CSS selector (not used with API, but kept for compatibility).
+    
+    Returns:
+        list: List of article data in format [section, subsection, title, url].
+    """
+    # Extract base URL for API calls
+    base_url = "https://help.byupathway.edu"
+    if url and url.startswith("http"):
+        # Use the provided URL's domain if different
+        from urllib.parse import urlparse
+        parsed = urlparse(url)
+        base_url = f"{parsed.scheme}://{parsed.netloc}"
+    
+    data = []
+    page = 1
+
+    while True:
+        page_data = _fetch_help_page(page, base_url)
+        if not page_data:
+            print(f"Stopping help articles fetch at page {page} due to error.")
+            break
+
+        results = page_data.get("results", [])
+        for item in results:
+            article_id = item.get("articleId")
+            title = item.get("title", "")
             
-            title = await title_element.inner_text()
-            href = await link.get_attribute("href")
+            if article_id and title:
+                article_url = _build_help_article_url(article_id, base_url)
+                # Format: [section, subsection, title, url]
+                # Using "Help Articles" as section and empty subsection for consistency
+                data.append(["Help Articles", "", clean(title), article_url])
 
-            full_url = urljoin(url, href)
+        # Check if there are more records to fetch
+        if not page_data.get("morerecords", False):
+            break
 
-            data.append(
-                [
-                    title,
-                    "", # No subsection
-                    title,
-                    full_url,
-                ]
-            )
+        page += 1
 
-        return data
-    finally:
-        await browser.close()
-        await playwright.stop()
+    return data
 
 
 async def get_services_links(url):
